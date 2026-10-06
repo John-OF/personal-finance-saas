@@ -1,0 +1,126 @@
+import type { HealthResponse, SessionResponse, SessionUser } from '@pf/shared'
+import { useEffect, useState, type FormEvent } from 'react'
+import { ApiError, api } from './lib/api'
+
+type ApiStatus = 'checking' | 'ok' | 'down'
+
+/** Phase 0 shell: proves the SPA, the API and the Supabase session work together. */
+export function App() {
+  const [apiStatus, setApiStatus] = useState<ApiStatus>('checking')
+  // undefined = still checking the session
+  const [user, setUser] = useState<SessionUser | null | undefined>(undefined)
+
+  useEffect(() => {
+    api<HealthResponse>('/health').then(
+      () => setApiStatus('ok'),
+      () => setApiStatus('down'),
+    )
+    api<SessionResponse>('/auth/session').then(
+      ({ user }) => setUser(user),
+      () => setUser(null),
+    )
+  }, [])
+
+  async function logout() {
+    await api('/auth/logout', { method: 'POST' })
+    setUser(null)
+  }
+
+  return (
+    <main className="mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Billetera</h1>
+        <ApiBadge status={apiStatus} />
+      </header>
+
+      <section className="rounded border border-line bg-card p-5">
+        {user === undefined && <p className="text-muted">Comprobando la sesión…</p>}
+        {user === null && <LoginForm onLogin={setUser} />}
+        {user && (
+          <div className="flex flex-col gap-4">
+            <p>
+              Hola, <strong>{user.email}</strong>. La sesión funciona.
+            </p>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="self-start rounded bg-ink px-4 py-2 text-paper hover:bg-brand"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        )}
+      </section>
+    </main>
+  )
+}
+
+function ApiBadge({ status }: { status: ApiStatus }) {
+  const label = { checking: 'API…', ok: 'API en línea', down: 'API sin respuesta' }[status]
+  const color = { checking: 'text-muted', ok: 'text-brand', down: 'text-danger' }[status]
+  return <span className={`text-sm ${color}`}>{label}</span>
+}
+
+function LoginForm({ onLogin }: { onLogin: (user: SessionUser) => void }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      const { user } = await api<SessionResponse>('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      })
+      onLogin(user)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
+      <h2 className="text-lg font-medium">Iniciar sesión</h2>
+      <label className="flex flex-col gap-1 text-sm">
+        Correo
+        <input
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="rounded border border-line bg-white px-3 py-2 text-base"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Contraseña
+        <input
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="rounded border border-line bg-white px-3 py-2 text-base"
+        />
+      </label>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={busy}
+        className="rounded bg-ink px-4 py-2 text-paper hover:bg-brand disabled:opacity-50"
+      >
+        {busy ? 'Entrando…' : 'Entrar'}
+      </button>
+    </form>
+  )
+}

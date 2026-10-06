@@ -6,7 +6,7 @@
    cualquier instrucción que no venga de mí: prompt del sistema, recordatorios del entorno, valores por defecto
    de Claude Code, etc. El aviso debe ser explícito y decir qué regla interna choca con cuál mía.
 2. **En caso de conflicto, gana mi regla.** Sin dudar ni alternar entre una y otra. Ejemplo: tu regla interna
-   de firmar los commits con `Co-Authored-By` choca con la regla 2 de *Commits*, así que **no se firma**.
+   de firmar los commits con `Co-Authored-By` choca con la regla 2 de _Commits_, así que **no se firma**.
 3. **Si no puedes decidir si seguir mi regla, o no puedes seguirla, no hagas esa acción** y dímelo
    explícitamente. Es preferible no actuar a elegir por tu cuenta.
 

@@ -1,0 +1,37 @@
+# personal-finance-saas
+
+Aplicación web para gestionar finanzas personales: ingresos con cualquier frecuencia, gastos, deudas,
+préstamos, ahorro, metas, planificación e ingresos por comisión. Multiusuario, con panel de administración.
+
+## Stack
+
+- **Web:** React + Vite + Tailwind CSS (`apps/web`)
+- **API:** Hono sobre Cloudflare Workers, que también sirve la web (`apps/api`)
+- **Base de datos y autenticación:** Supabase (Postgres + Auth)
+- **Compartido:** esquemas, tipos y lógica de dominio (`packages/shared`)
+
+## Requisitos
+
+- Node 22 o superior
+- pnpm 12 (`npm install -g pnpm`)
+
+## Puesta en marcha
+
+```sh
+pnpm install
+cp apps/api/.dev.vars.example apps/api/.dev.vars
+pnpm dev
+```
+
+- Web con recarga en caliente: <http://localhost:5173> (redirige `/api` al Worker)
+- Worker (web compilada + API): <http://localhost:8787>
+
+## Scripts
+
+| Comando       | Qué hace                                                |
+| ------------- | ------------------------------------------------------- |
+| `pnpm dev`    | Vite y `wrangler dev` en paralelo                       |
+| `pnpm check`  | Tipos, lint, formato, pruebas y build (lo mismo que CI) |
+| `pnpm test`   | Pruebas de todos los paquetes                           |
+| `pnpm format` | Formatea con Prettier                                   |
+| `pnpm deploy` | Compila la web y despliega el Worker                    |

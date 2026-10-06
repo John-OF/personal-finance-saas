@@ -65,3 +65,6 @@ desktop.ini
 
 # --- Claude Code (ajustes locales de cada maquina) ---
 .claude/settings.local.json
+
+# --- Tipos generados por `wrangler types` (se regeneran en postinstall) ---
+worker-configuration.d.ts

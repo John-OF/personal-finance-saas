@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #10201b;
+  --color-paper: #e9ede6;
+  --color-card: #fbfcfa;
+  --color-line: #c7d1c8;
+  --color-muted: #5c6a62;
+  --color-brand: #1d6b4f;
+  --color-danger: #8c2f39;
+}
+
+@layer base {
+  body {
+    @apply min-h-screen bg-paper text-ink antialiased;
+  }
+}
