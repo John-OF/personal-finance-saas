@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:credentials": "node --env-file-if-exists=.env.credentials scripts/db-credentials.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --env-file-if-exists=.env.credentials scripts/db-migrate.js"
+    "db:migrate": "node --env-file-if-exists=.env.credentials scripts/db-migrate.js",
+    "admin:promote": "node --env-file-if-exists=.env.credentials scripts/admin-promote.js"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",

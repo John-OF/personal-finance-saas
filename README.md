@@ -39,11 +39,12 @@ Las tablas se declaran en `apps/api/src/db/schema.ts`, sin schema: el rol de la 
 datos van a `app` (producción) o a `app_dev` (local). Toda tabla de usuario tiene RLS y la API fija el
 usuario en cada transacción.
 
-| Comando                                    | Qué hace                                                     |
-| ------------------------------------------ | ------------------------------------------------------------ |
-| `pnpm --filter @pf/api db:generate`        | Genera la migración SQL en `apps/api/drizzle/` (revísala)    |
-| `pnpm --filter @pf/api db:migrate app_dev` | Aplica las migraciones pendientes en el schema de desarrollo |
-| `pnpm --filter @pf/api db:credentials`     | Asigna o rota las contraseñas de los roles de la API         |
+| Comando                                                | Qué hace                                                                          |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `pnpm --filter @pf/api db:generate`                    | Genera la migración SQL en `apps/api/drizzle/` (revísala)                         |
+| `pnpm --filter @pf/api db:migrate app_dev`             | Aplica las migraciones pendientes en el schema de desarrollo                      |
+| `pnpm --filter @pf/api db:credentials`                 | Asigna o rota las contraseñas de los roles de la API                              |
+| `pnpm --filter @pf/api admin:promote app_dev <correo>` | Hace administrador a un usuario registrado (en `app`, con `--confirm-production`) |
 
 Producción (`app`) la migra el CI antes de cada despliegue. Las migraciones se aplican todas en una
 transacción y se registran con un hash: una migración ya aplicada no se edita, se añade otra.
