@@ -57,6 +57,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # Before the new code goes live, so migrations must stay compatible with the running version
+      # (expand first, clean up in a later deploy). Session pooler URL: runners have no IPv6.
+      - run: pnpm --filter @pf/api run db:migrate app --confirm-production
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
       - run: pnpm --filter @pf/api run deploy --message "CI ${GITHUB_SHA::7}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
