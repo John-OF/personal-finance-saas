@@ -14,6 +14,11 @@
   "observability": {
     "enabled": true,
   },
+  // Runs the API next to the database (Supabase us-east-1): each request makes several round trips
+  // (BEGIN + set_config, queries, COMMIT). Static assets are still served from the nearest location.
+  "placement": {
+    "region": "aws:us-east-1",
+  },
   // Connects as pf_api (schema `app`), sslmode verify-full, caching disabled. `wrangler dev` uses
   // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE from .env instead (pf_api_dev, `app_dev`).
   // Credentials: `pnpm --filter @pf/api db:credentials`.
