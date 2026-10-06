@@ -1,7 +1,7 @@
 import type { Context } from 'hono'
 import type { Bindings } from '../env'
 
-/** Header the mocked Supabase client reads the session user from (see mockSupabaseSession). */
+/** Header the mocked session reads the user from (see mockSession). */
 export const TEST_USER_HEADER = 'X-Test-User'
 
 export function createTestEnv(connectionString: string): Bindings {
@@ -27,22 +27,14 @@ export function createExecutionContext() {
 }
 
 /**
- * Replacement for lib/supabase in `vi.mock`: the session user is whatever the test header says, so
- * the tests exercise everything after the JWT check without a Supabase project.
+ * Replacement for lib/session in `vi.mock`: the session user is whatever the test header says, so
+ * route tests exercise everything after the token check (covered by lib/session.test.ts).
  */
-export function mockSupabaseSession() {
+export function mockSession() {
   return {
-    createSupabase: (c: Context) => ({
-      auth: {
-        getClaims: () => {
-          const sub = c.req.header(TEST_USER_HEADER)
-          return Promise.resolve(
-            sub
-              ? { data: { claims: { sub, email: `${sub.slice(-1)}@example.com` } }, error: null }
-              : { data: null, error: new Error('no session') },
-          )
-        },
-      },
-    }),
+    authenticate: (c: Context) => {
+      const id = c.req.header(TEST_USER_HEADER)
+      return Promise.resolve(id ? { id, email: `${id.slice(-1)}@example.com` } : null)
+    },
   }
 }

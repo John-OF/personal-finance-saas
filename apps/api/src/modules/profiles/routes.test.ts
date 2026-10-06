@@ -4,7 +4,7 @@ import { app } from '../../app'
 import { createExecutionContext, createTestEnv, TEST_USER_HEADER } from '../../test/app'
 import { startApiDatabase } from '../../test/db'
 
-vi.mock('../../lib/supabase', async () => (await import('../../test/app')).mockSupabaseSession())
+vi.mock('../../lib/session', async () => (await import('../../test/app')).mockSession())
 
 const USER_A = '00000000-0000-4000-8000-00000000000a'
 const USER_B = '00000000-0000-4000-8000-00000000000b'
