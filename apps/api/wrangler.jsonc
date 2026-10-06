@@ -14,6 +14,15 @@
   "observability": {
     "enabled": true,
   },
+  // Connects as pf_api (schema `app`), sslmode verify-full, caching disabled. `wrangler dev` uses
+  // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE from .env instead (pf_api_dev, `app_dev`).
+  // Credentials: `pnpm --filter @pf/api db:credentials`.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "5f7a912dadc44a67bd0f2e6cc91300e8",
+    },
+  ],
   // Per Cloudflare location and eventually consistent: a brake against brute force, not accounting.
   "ratelimits": [
     {

@@ -1,9 +1,11 @@
 import type { HealthResponse } from '@pf/shared'
+import { sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { secureHeaders } from 'hono/secure-headers'
 import type { AppEnv } from './env'
 import { apiError } from './lib/errors'
+import { withDb } from './middleware/db'
 import { requireSameOrigin } from './middleware/same-origin'
 import { authRoutes } from './routes/auth'
 
@@ -26,6 +28,12 @@ app.use(
 app.use('/api/*', requireSameOrigin)
 
 app.get('/api/v1/health', (c) => {
+  const body: HealthResponse = { status: 'ok', time: new Date().toISOString() }
+  return c.json(body)
+})
+// Separate from /health so uptime checks do not spend the daily Hyperdrive query quota.
+app.get('/api/v1/health/db', withDb, async (c) => {
+  await c.var.db.execute(sql`select 1`)
   const body: HealthResponse = { status: 'ok', time: new Date().toISOString() }
   return c.json(body)
 })

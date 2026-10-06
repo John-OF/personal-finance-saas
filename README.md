@@ -20,8 +20,14 @@ préstamos, ahorro, metas, planificación e ingresos por comisión. Multiusuario
 ```sh
 pnpm install
 cp apps/api/.dev.vars.example apps/api/.dev.vars
+pnpm --filter @pf/api db:credentials   # pide la contraseña de postgres; escribe apps/api/.env
 pnpm dev
 ```
+
+`db:credentials` asigna contraseñas nuevas a los roles de la API (`pf_api` para producción y `pf_api_dev`
+para local), actualiza Hyperdrive y escribe la conexión local en `apps/api/.env`. Solo hace falta la primera
+vez o para rotar las contraseñas. El SQL que crea los schemas y los roles está en
+`apps/api/scripts/bootstrap-db.sql`.
 
 - Web con recarga en caliente: <http://localhost:5173> (redirige `/api` al Worker)
 - Worker (web compilada + API): <http://localhost:8787>

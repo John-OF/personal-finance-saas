@@ -7,6 +7,8 @@ let rateLimitAllows = true
 const env: Bindings = {
   ASSETS: { fetch: () => Promise.resolve(new Response('asset')) } as unknown as Fetcher,
   AUTH_RATE_LIMITER: { limit: () => Promise.resolve({ success: rateLimitAllows }) },
+  // Nothing listens on port 1: every connection attempt is refused.
+  HYPERDRIVE: { connectionString: 'postgresql://user:pass@127.0.0.1:1/db' } as Hyperdrive,
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
   APP_EXTRA_ORIGINS: 'http://localhost:5173',
@@ -31,6 +33,14 @@ describe('GET /api/v1/health', () => {
     expect(await res.json()).toMatchObject({ status: 'ok' })
     expect(res.headers.get('Cache-Control')).toBe('no-store')
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')
+  })
+})
+
+describe('GET /api/v1/health/db', () => {
+  it('responds 503 when the database is unreachable', async () => {
+    const res = await request('/api/v1/health/db')
+    expect(res.status).toBe(503)
+    expect(await res.json()).toMatchObject({ error: { code: 'database_unavailable' } })
   })
 })
 
