@@ -34,10 +34,10 @@ vez o para rotar las contraseñas. El SQL que crea los schemas y los roles está
 
 ## Scripts
 
-| Comando       | Qué hace                                                |
-| ------------- | ------------------------------------------------------- |
-| `pnpm dev`    | Vite y `wrangler dev` en paralelo                       |
-| `pnpm check`  | Tipos, lint, formato, pruebas y build (lo mismo que CI) |
-| `pnpm test`   | Pruebas de todos los paquetes                           |
-| `pnpm format` | Formatea con Prettier                                   |
-| `pnpm deploy` | Compila la web y despliega el Worker                    |
+| Comando           | Qué hace                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| `pnpm dev`        | Vite y `wrangler dev` en paralelo                                                  |
+| `pnpm check`      | Tipos, lint, formato, pruebas y build (lo mismo que CI)                            |
+| `pnpm test`       | Pruebas de todos los paquetes                                                      |
+| `pnpm format`     | Formatea con Prettier                                                              |
+| `pnpm run deploy` | Compila la web y despliega el Worker (`run` evita el `pnpm deploy` propio de pnpm) |
