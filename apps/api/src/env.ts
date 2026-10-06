@@ -1,4 +1,5 @@
 import type { Db } from './db/client'
+import type { UserRole } from './db/schema'
 
 export interface Bindings {
   ASSETS: Fetcher
@@ -14,6 +15,8 @@ export interface Variables {
   /** Set by requireAuth from the verified JWT. */
   userId: string
   userEmail: string | null
+  /** Set by withUserDb from user_access. */
+  userRole: UserRole
 }
 
 export interface AppEnv {

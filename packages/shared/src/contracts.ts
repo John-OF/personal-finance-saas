@@ -32,8 +32,11 @@ export interface UserProfile {
   onboardedAt: string | null
 }
 
+export type UserRole = 'user' | 'admin'
+
 export interface MeResponse {
   user: SessionUser
+  role: UserRole
   profile: UserProfile
 }
 

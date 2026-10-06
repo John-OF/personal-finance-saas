@@ -24,6 +24,16 @@ async function history() {
   return rows.map(({ name }) => name)
 }
 
+/** Runs `fn` in a transaction as the API would for `userId` (after `set role` to the API role). */
+async function asUser<T>(userId: string, fn: () => Promise<T>) {
+  await db.exec(`begin; select set_config('app.user_id', '${userId}', true)`)
+  try {
+    return await fn()
+  } finally {
+    await db.exec('rollback')
+  }
+}
+
 describe('migrate', () => {
   it('applies every migration in the target schema and records it', async () => {
     const migrations = loadMigrations()
@@ -122,16 +132,6 @@ describe('profiles row-level security', () => {
     `)
   })
 
-  /** Runs `fn` in a transaction as the API would for `userId`. */
-  async function asUser<T>(userId: string, fn: () => Promise<T>) {
-    await db.exec(`begin; select set_config('app.user_id', '${userId}', true)`)
-    try {
-      return await fn()
-    } finally {
-      await db.exec('rollback')
-    }
-  }
-
   it('shows nothing when no user is set', async () => {
     const { rows } = await db.query('select id from profiles')
     expect(rows).toEqual([])
@@ -165,5 +165,43 @@ describe('profiles row-level security', () => {
       db.query('delete from profiles where id = $1', [USER_A]),
     )
     expect(result.affectedRows).toBe(0)
+  })
+})
+
+describe('user_access row-level security and privileges', () => {
+  beforeEach(async () => {
+    await migrate(db, TEST_SCHEMA, loadMigrations())
+    await db.exec(`
+      insert into auth.users (id) values ('${USER_A}'), ('${USER_B}');
+      insert into ${TEST_SCHEMA}.user_access (user_id, role)
+        values ('${USER_A}', 'admin'), ('${USER_B}', 'user');
+      set role ${TEST_ROLE};
+      set search_path to ${TEST_SCHEMA};
+    `)
+  })
+
+  it('lets the API read only the current user row', async () => {
+    const rows = await asUser(
+      USER_B,
+      async () => (await db.query('select user_id, role from user_access')).rows,
+    )
+    expect(rows).toEqual([{ user_id: USER_B, role: 'user' }])
+  })
+
+  it('leaves the API with read-only privileges on the table', async () => {
+    const { rows } = await db.query<{ privilege_type: string }>(
+      `select privilege_type from information_schema.role_table_grants
+       where table_name = 'user_access' and grantee = $1 order by privilege_type`,
+      [TEST_ROLE],
+    )
+    expect(rows.map(({ privilege_type }) => privilege_type)).toEqual(['SELECT'])
+  })
+
+  it.each([
+    ['promote itself', `update user_access set role = 'admin' where user_id = '${USER_B}'`],
+    ['create its own row', `insert into user_access (user_id, role) values ('${USER_B}', 'admin')`],
+    ['delete a row', `delete from user_access where user_id = '${USER_B}'`],
+  ])('does not let a user %s', async (_case, statement) => {
+    await expect(asUser(USER_B, () => db.query(statement))).rejects.toThrow(/permission denied/)
   })
 })

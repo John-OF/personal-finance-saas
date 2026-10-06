@@ -47,3 +47,37 @@ export const profiles = pgTable(
 )
 
 export type ProfileRow = typeof profiles.$inferSelect
+
+/**
+ * Role and account status, kept out of `profiles` because users may edit their own profile row: a
+ * bug there must not let anyone make themselves an admin (plan §7.8). The API can only read its
+ * own row; writes come from scripts run as `postgres` (admin:promote) and, later, from
+ * security-definer functions. No row means role `user`, status `active`.
+ */
+export const userAccess = pgTable(
+  'user_access',
+  {
+    userId: uuid('user_id')
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['user', 'admin'] })
+      .notNull()
+      .default('user'),
+    status: text('status', { enum: ['active', 'suspended'] })
+      .notNull()
+      .default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    check('user_access_role_valid', sql`${t.role} in ('user', 'admin')`),
+    check('user_access_status_valid', sql`${t.status} in ('active', 'suspended')`),
+    // Read-only for the API: no insert, update or delete policy.
+    pgPolicy('user_access_select_own', { for: 'select', using: sql`user_id = ${currentUserId}` }),
+  ],
+)
+
+export type UserRole = (typeof userAccess.$inferSelect)['role']

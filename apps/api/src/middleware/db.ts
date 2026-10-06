@@ -1,6 +1,8 @@
 import type { Context } from 'hono'
 import { createMiddleware } from 'hono/factory'
+import type { QueryResult } from 'pg'
 import { openDb, type DbConnection } from '../db/client'
+import type { UserRole } from '../db/schema'
 import type { AppEnv } from '../env'
 import { apiError } from '../lib/errors'
 import { isUuid } from '../lib/ids'
@@ -41,12 +43,14 @@ export const withDb = createMiddleware<AppEnv>(async (c, next) => {
 /**
  * Like withDb, but the whole request runs in one transaction with `app.user_id` set to the session
  * user, which is what the row-level security policies filter by. The setting is local to the
- * transaction, so it cannot leak to another request through Hyperdrive's pool. Commits when the
- * handler succeeds and rolls back when it throws. Goes after requireAuth.
+ * transaction, so it cannot leak to another request through Hyperdrive's pool. Also loads the
+ * user's role into `c.var.userRole` and turns suspended accounts away with 403, even while their
+ * access token is still valid. Commits when the handler succeeds and rolls back when it throws.
+ * Goes after requireAuth.
  */
 export const withUserDb = createMiddleware<AppEnv>(async (c, next) => {
   const userId = c.var.userId
-  // Inlined rather than bound so BEGIN and set_config travel in a single round trip (the simple
+  // Inlined rather than bound so the three statements travel in a single round trip (the simple
   // query protocol takes no parameters). Safe because only a UUID can get here.
   if (!isUuid(userId)) throw new Error('withUserDb needs requireAuth before it')
 
@@ -54,7 +58,18 @@ export const withUserDb = createMiddleware<AppEnv>(async (c, next) => {
   if (connection instanceof Response) return connection
 
   try {
-    await connection.client.query(`begin; select set_config('app.user_id', '${userId}', true)`)
+    const results = (await connection.client.query(
+      `begin; select set_config('app.user_id', '${userId}', true); ` +
+        `select role, status from user_access where user_id = '${userId}'`,
+    )) as unknown as QueryResult[]
+    // No row means a regular, active user.
+    const access = results.at(-1)?.rows[0] as { role: UserRole; status: string } | undefined
+    if (access?.status === 'suspended') {
+      await connection.client.query('rollback')
+      return apiError(c, 403, 'account_suspended', 'Tu cuenta está suspendida.')
+    }
+
+    c.set('userRole', access?.role ?? 'user')
     c.set('db', connection.db)
     await next()
     // A failed COMMIT throws, so the client gets an error instead of a success that was not saved.

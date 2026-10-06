@@ -55,6 +55,7 @@ describe('GET /api/v1/me', () => {
     const body = await first.json<MeResponse>()
     expect(body).toEqual({
       user: { id: USER_A, email: 'a@example.com' },
+      role: 'user',
       profile: {
         displayName: null,
         currency: 'USD',
@@ -74,6 +75,13 @@ describe('GET /api/v1/me', () => {
     const res = await getMe(USER_B)
     expect((await res.json<MeResponse>()).user.id).toBe(USER_B)
     expect(await countProfiles()).toBe(2)
+  })
+
+  it('reports the admin role from user_access', async () => {
+    await database.asAdmin((db) =>
+      db.exec(`insert into user_access (user_id, role) values ('${USER_B}', 'admin')`),
+    )
+    expect((await (await getMe(USER_B)).json<MeResponse>()).role).toBe('admin')
   })
 
   it('leaves no user set on the connection after the request', async () => {

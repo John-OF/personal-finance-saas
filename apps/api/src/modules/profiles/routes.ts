@@ -21,6 +21,7 @@ export const meRoutes = new Hono<AppEnv>().use(requireAuth, withUserDb).get('/',
   const profile = await findOrCreateProfile(c.var.db, c.var.userId)
   const body: MeResponse = {
     user: { id: c.var.userId, email: c.var.userEmail },
+    role: c.var.userRole,
     profile: toUserProfile(profile),
   }
   return c.json(body)
