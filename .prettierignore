@@ -4,3 +4,4 @@ coverage/
 .wrangler/
 pnpm-lock.yaml
 worker-configuration.d.ts
+apps/api/drizzle/meta/

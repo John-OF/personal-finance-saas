@@ -21,6 +21,7 @@ préstamos, ahorro, metas, planificación e ingresos por comisión. Multiusuario
 pnpm install
 cp apps/api/.dev.vars.example apps/api/.dev.vars
 pnpm --filter @pf/api db:credentials   # pide la contraseña de postgres; escribe apps/api/.env
+pnpm --filter @pf/api db:migrate app_dev
 pnpm dev
 ```
 
@@ -31,6 +32,21 @@ vez o para rotar las contraseñas. El SQL que crea los schemas y los roles está
 
 - Web con recarga en caliente: <http://localhost:5173> (redirige `/api` al Worker)
 - Worker (web compilada + API): <http://localhost:8787>
+
+## Base de datos
+
+Las tablas se declaran en `apps/api/src/db/schema.ts`, sin schema: el rol de la conexión decide si los
+datos van a `app` (producción) o a `app_dev` (local). Toda tabla de usuario tiene RLS y la API fija el
+usuario en cada transacción.
+
+| Comando                                    | Qué hace                                                     |
+| ------------------------------------------ | ------------------------------------------------------------ |
+| `pnpm --filter @pf/api db:generate`        | Genera la migración SQL en `apps/api/drizzle/` (revísala)    |
+| `pnpm --filter @pf/api db:migrate app_dev` | Aplica las migraciones pendientes en el schema de desarrollo |
+| `pnpm --filter @pf/api db:credentials`     | Asigna o rota las contraseñas de los roles de la API         |
+
+Producción (`app`) la migra el CI antes de cada despliegue. Las migraciones se aplican todas en una
+transacción y se registran con un hash: una migración ya aplicada no se edita, se añade otra.
 
 ## Scripts
 
