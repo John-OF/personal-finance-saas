@@ -6,20 +6,12 @@
 //   pnpm --filter @pf/api db:migrate app_dev                     local development
 //   pnpm --filter @pf/api db:migrate app --confirm-production    production (normally the CI deploy job)
 //
-// Connection, first match wins:
-//   DATABASE_URL           full URL; the CI uses the Supabase session pooler (runners lack IPv6)
-//   SUPABASE_DB_PASSWORD   direct connection; can come from apps/api/.env.credentials
-//   otherwise the `postgres` password is asked without echo.
+// Connection: see adminConnection in scripts/lib/db.js.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { migrate } from '../src/db/migrator.ts'
-import { apiDir, askHidden, DB_HOST, DB_NAME, DB_PORT, withClient } from './lib/db.js'
-
-const SCHEMAS = {
-  app_dev: { production: false },
-  app: { production: true },
-}
+import { adminConnection, apiDir, targetSchema, withClient } from './lib/db.js'
 
 function loadMigrations() {
   const dir = join(apiDir, 'drizzle')
@@ -32,35 +24,16 @@ function loadMigrations() {
     }))
 }
 
-async function connectionConfig() {
-  const url = process.env.DATABASE_URL
-  if (url) {
-    const { hostname, port, username, password, pathname } = new URL(url)
-    return {
-      host: hostname,
-      port: Number(port || 5432),
-      database: decodeURIComponent(pathname.slice(1)) || DB_NAME,
-      user: decodeURIComponent(username),
-      password: decodeURIComponent(password),
-    }
-  }
-  const password =
-    process.env.SUPABASE_DB_PASSWORD ||
-    (await askHidden('Contraseña de la base (rol postgres, no se muestra): '))
-  if (!password) throw new Error('No se escribió ninguna contraseña.')
-  return { host: DB_HOST, port: DB_PORT, database: DB_NAME, user: 'postgres', password }
-}
-
 async function main() {
-  const [schema, ...flags] = process.argv.slice(2)
-  const target = SCHEMAS[schema]
-  if (!target) throw new Error('Uso: db:migrate app_dev | db:migrate app --confirm-production')
-  if (target.production && !flags.includes('--confirm-production')) {
-    throw new Error('El schema app es producción: añade --confirm-production si de verdad es ahí.')
-  }
+  const [schemaArg, ...flags] = process.argv.slice(2)
+  const schema = targetSchema(
+    schemaArg,
+    flags,
+    'db:migrate app_dev | db:migrate app --confirm-production',
+  )
 
   const migrations = loadMigrations()
-  const applied = await withClient(await connectionConfig(), (client) =>
+  const applied = await withClient(await adminConnection(), (client) =>
     migrate(client, schema, migrations),
   )
   console.log(

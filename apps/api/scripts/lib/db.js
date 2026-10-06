@@ -58,3 +58,41 @@ export function askHidden(question) {
     stdin.on('data', onData)
   })
 }
+
+/** Schemas the admin scripts may target; `app` is production and needs an explicit flag. */
+const SCHEMAS = { app_dev: { production: false }, app: { production: true } }
+
+/** Validates the target schema of a script run, refusing production without --confirm-production. */
+export function targetSchema(schema, flags, usage) {
+  const target = SCHEMAS[schema]
+  if (!target) throw new Error(`Uso: ${usage}`)
+  if (target.production && !flags.includes('--confirm-production')) {
+    throw new Error('El schema app es producción: añade --confirm-production si de verdad es ahí.')
+  }
+  return schema
+}
+
+/**
+ * How to connect as `postgres`, first match wins:
+ *   DATABASE_URL           full URL; the CI uses the Supabase session pooler (runners lack IPv6)
+ *   SUPABASE_DB_PASSWORD   direct connection; can come from apps/api/.env.credentials
+ *   otherwise the password is asked without echo.
+ */
+export async function adminConnection() {
+  const url = process.env.DATABASE_URL
+  if (url) {
+    const { hostname, port, username, password, pathname } = new URL(url)
+    return {
+      host: hostname,
+      port: Number(port || 5432),
+      database: decodeURIComponent(pathname.slice(1)) || DB_NAME,
+      user: decodeURIComponent(username),
+      password: decodeURIComponent(password),
+    }
+  }
+  const password =
+    process.env.SUPABASE_DB_PASSWORD ||
+    (await askHidden('Contraseña de la base (rol postgres, no se muestra): '))
+  if (!password) throw new Error('No se escribió ninguna contraseña.')
+  return { host: DB_HOST, port: DB_PORT, database: DB_NAME, user: 'postgres', password }
+}
