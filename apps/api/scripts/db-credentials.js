@@ -16,12 +16,8 @@ import { createHash, createHmac, pbkdf2Sync, randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import pg from 'pg'
+import { apiDir, askHidden, caCertPath, DB_HOST, DB_NAME, DB_PORT, withClient } from './lib/db.js'
 
-const DB_HOST = 'db.qjzsepekcqqosgkbwuga.supabase.co'
-const DB_PORT = 5432
-const DB_NAME = 'postgres'
 const PROD_ROLE = 'pf_api'
 const DEV_ROLE = 'pf_api_dev'
 const HYPERDRIVE_NAME = 'personal-finance-db'
@@ -29,10 +25,9 @@ const HYPERDRIVE_NAME = 'personal-finance-db'
 const HYPERDRIVE_CA_CERT_ID = '0448dc23-0ace-46f6-aafe-58363cc3dc92'
 const LOCAL_CONNECTION_ENV = 'CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE'
 
-const apiDir = join(dirname(fileURLToPath(import.meta.url)), '..')
-const caCertPath = join(apiDir, 'certs', 'supabase-root-2021-ca.crt')
 const envPath = join(apiDir, '.env')
 const credentialsPath = join(apiDir, '.env.credentials')
+const wranglerConfigPath = join(apiDir, 'wrangler.jsonc')
 const CREDENTIAL_ENV_NAMES = ['SUPABASE_DB_PASSWORD', 'PF_API_PASSWORD', 'PF_API_DEV_PASSWORD']
 
 /** Every secret handled by this run, so that no message can leak one. */
@@ -42,37 +37,6 @@ function redact(text) {
   let result = text
   for (const secret of secrets) result = result.replaceAll(secret, '***')
   return result
-}
-const wranglerConfigPath = join(apiDir, 'wrangler.jsonc')
-
-/** Reads a line from the terminal without echoing it. */
-function askHidden(question) {
-  const { stdin, stdout } = process
-  if (!stdin.isTTY) throw new Error('Ejecuta este script en una terminal interactiva.')
-  return new Promise((resolve, reject) => {
-    let value = ''
-    const finish = (error) => {
-      stdin.off('data', onData)
-      stdin.setRawMode(false)
-      stdin.pause()
-      stdout.write('\n')
-      if (error) reject(error)
-      else resolve(value)
-    }
-    const onData = (chunk) => {
-      for (const char of chunk) {
-        if (char === '\r' || char === '\n') return finish()
-        if (char === '\u0003') return finish(new Error('Cancelado.'))
-        if (char === '\u007f' || char === '\b') value = value.slice(0, -1)
-        else value += char
-      }
-    }
-    stdout.write(question)
-    stdin.setEncoding('utf8')
-    stdin.setRawMode(true)
-    stdin.resume()
-    stdin.on('data', onData)
-  })
 }
 
 /** The password from `envName`, or 32 random URL-safe characters. */
@@ -102,23 +66,9 @@ function scramVerifier(password) {
   return `SCRAM-SHA-256$${iterations}:${salt.toString('base64')}$${storedKey.toString('base64')}:${serverKey.toString('base64')}`
 }
 
-async function withClient(user, password, fn) {
-  // `ca` plus Node's default hostname check is the equivalent of sslmode=verify-full.
-  const ssl = { ca: readFileSync(caCertPath, 'utf8') }
-  const client = new pg.Client({
-    host: DB_HOST,
-    port: DB_PORT,
-    database: DB_NAME,
-    user,
-    password,
-    ssl,
-  })
-  await client.connect()
-  try {
-    return await fn(client)
-  } finally {
-    await client.end()
-  }
+/** Connects to the project's database directly as `user`. */
+function withRole(user, password, fn) {
+  return withClient({ host: DB_HOST, port: DB_PORT, database: DB_NAME, user, password }, fn)
 }
 
 function runWrangler(args) {
@@ -159,7 +109,7 @@ async function main() {
   }
   for (const secret of [adminPassword, ...Object.values(passwords)]) secrets.add(secret)
 
-  await withClient('postgres', adminPassword, async (client) => {
+  await withRole('postgres', adminPassword, async (client) => {
     for (const [role, password] of Object.entries(passwords)) {
       // ALTER ROLE does not accept bind parameters; the verifier is base64 plus `$:` only.
       await client.query(`alter role ${role} password '${scramVerifier(password)}'`)
@@ -168,7 +118,7 @@ async function main() {
   console.log('✓ Contraseñas asignadas a pf_api y pf_api_dev.')
 
   for (const [role, password] of Object.entries(passwords)) {
-    const { rows } = await withClient(role, password, (client) =>
+    const { rows } = await withRole(role, password, (client) =>
       client.query('select current_user as "user", current_schema() as schema'),
     )
     console.log(`✓ ${rows[0].user} entra con TLS verificado y usa el schema ${rows[0].schema}.`)
