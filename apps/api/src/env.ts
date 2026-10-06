@@ -11,6 +11,9 @@ export interface Bindings {
 
 export interface Variables {
   db: Db
+  /** Set by requireAuth from the verified JWT. */
+  userId: string
+  userEmail: string | null
 }
 
 export interface AppEnv {

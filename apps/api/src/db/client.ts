@@ -12,8 +12,11 @@ export async function openDb(connectionString: string) {
   const client = new Client({ connectionString })
   await client.connect()
   return {
+    client,
     db: drizzle({ client }),
     // A failure while closing cannot affect a response that has already been sent.
     close: () => client.end().catch(() => undefined),
   }
 }
+
+export type DbConnection = Awaited<ReturnType<typeof openDb>>

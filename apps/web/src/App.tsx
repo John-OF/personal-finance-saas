@@ -1,10 +1,10 @@
-import type { HealthResponse, SessionResponse, SessionUser } from '@pf/shared'
+import type { HealthResponse, MeResponse, SessionResponse, SessionUser } from '@pf/shared'
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api } from './lib/api'
 
 type ApiStatus = 'checking' | 'ok' | 'down'
 
-/** Phase 0 shell: proves the SPA, the API and the Supabase session work together. */
+/** Temporary shell: proves the SPA, the API, the session and the database work together. */
 export function App() {
   const [apiStatus, setApiStatus] = useState<ApiStatus>('checking')
   // undefined = still checking the session
@@ -36,22 +36,51 @@ export function App() {
       <section className="rounded border border-line bg-card p-5">
         {user === undefined && <p className="text-muted">Comprobando la sesión…</p>}
         {user === null && <LoginForm onLogin={setUser} />}
-        {user && (
-          <div className="flex flex-col gap-4">
-            <p>
-              Hola, <strong>{user.email}</strong>. La sesión funciona.
-            </p>
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="self-start rounded bg-ink px-4 py-2 text-paper hover:bg-brand"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        )}
+        {user && <SignedIn user={user} onLogout={() => void logout()} />}
       </section>
     </main>
+  )
+}
+
+function SignedIn({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
+  const [me, setMe] = useState<MeResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    api<MeResponse>('/me').then(setMe, (err: unknown) =>
+      setError(err instanceof ApiError ? err.message : 'No se pudo cargar tu perfil.'),
+    )
+  }, [])
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p>
+        Hola, <strong>{user.email}</strong>.
+      </p>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      {!me && !error && <p className="text-muted">Cargando tu perfil…</p>}
+      {me && (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="text-muted">Moneda</dt>
+          <dd>{me.profile.currency}</dd>
+          <dt className="text-muted">Zona horaria</dt>
+          <dd>{me.profile.timezone}</dd>
+          <dt className="text-muted">Idioma</dt>
+          <dd>{me.profile.locale}</dd>
+        </dl>
+      )}
+      <button
+        type="button"
+        onClick={onLogout}
+        className="self-start rounded bg-ink px-4 py-2 text-paper hover:bg-brand"
+      >
+        Cerrar sesión
+      </button>
+    </div>
   )
 }
 

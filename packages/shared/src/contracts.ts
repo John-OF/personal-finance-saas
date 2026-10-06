@@ -17,6 +17,26 @@ export interface SessionResponse {
   user: SessionUser
 }
 
+/** Preferences the user can change. Role and account status live elsewhere (plan §7.8). */
+export interface UserProfile {
+  displayName: string | null
+  /** ISO 4217 code, e.g. `USD`. */
+  currency: string
+  /** BCP 47 tag, e.g. `es-EC`. */
+  locale: string
+  /** IANA time zone, e.g. `America/Guayaquil`. */
+  timezone: string
+  /** ISO weekday: 1 = Monday … 7 = Sunday. */
+  weekStartsOn: number
+  /** ISO timestamp of when the setup wizard was finished, or null. */
+  onboardedAt: string | null
+}
+
+export interface MeResponse {
+  user: SessionUser
+  profile: UserProfile
+}
+
 export interface HealthResponse {
   status: 'ok'
   time: string

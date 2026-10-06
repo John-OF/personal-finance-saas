@@ -4,6 +4,7 @@ import type { AppEnv } from '../env'
 import { apiError } from '../lib/errors'
 import { createSupabase } from '../lib/supabase'
 import { validate } from '../lib/validation'
+import { requireAuth } from '../middleware/auth'
 import { limitAuthByIp } from '../middleware/rate-limit'
 
 export const authRoutes = new Hono<AppEnv>()
@@ -38,13 +39,7 @@ export const authRoutes = new Hono<AppEnv>()
     await createSupabase(c).auth.signOut({ scope: 'local' })
     return c.body(null, 204)
   })
-  .get('/session', async (c) => {
-    // Verifies the JWT (locally when the project uses asymmetric signing keys) and refreshes it
-    // when it has expired, rewriting the cookies.
-    const { data, error } = await createSupabase(c).auth.getClaims()
-    if (error || !data) return apiError(c, 401, 'unauthenticated', 'Inicia sesión.')
-
-    const { sub, email } = data.claims
-    const body: SessionResponse = { user: { id: sub, email: email ?? null } }
+  .get('/session', requireAuth, (c) => {
+    const body: SessionResponse = { user: { id: c.var.userId, email: c.var.userEmail } }
     return c.json(body)
   })

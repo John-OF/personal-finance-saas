@@ -1,0 +1,24 @@
+import { eq } from 'drizzle-orm'
+import type { Db } from '../../db/client'
+import { profiles } from '../../db/schema'
+
+/**
+ * The user's profile, created with the defaults on first use. Profiles are created here rather than
+ * by a trigger on auth.users because the same Auth users are shared by the `app` and `app_dev`
+ * schemas.
+ */
+export async function findOrCreateProfile(db: Db, userId: string) {
+  const [existing] = await db.select().from(profiles).where(eq(profiles.id, userId))
+  if (existing) return existing
+
+  // Two first requests can race: the loser inserts nothing and reads the winner's row.
+  const [created] = await db
+    .insert(profiles)
+    .values({ id: userId })
+    .onConflictDoNothing()
+    .returning()
+  if (created) return created
+  const [raced] = await db.select().from(profiles).where(eq(profiles.id, userId))
+  if (!raced) throw new Error('profile not found after insert')
+  return raced
+}
