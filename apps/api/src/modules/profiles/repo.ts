@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm'
+import type { ProfileUpdate } from '@pf/shared'
+import { eq, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client'
 import { profiles } from '../../db/schema'
 
@@ -21,4 +22,20 @@ export async function findOrCreateProfile(db: Db, userId: string) {
   const [raced] = await db.select().from(profiles).where(eq(profiles.id, userId))
   if (!raced) throw new Error('profile not found after insert')
   return raced
+}
+
+/** Applies a validated update; finishing the setup wizard keeps the first completion date. */
+export async function updateProfile(db: Db, userId: string, update: ProfileUpdate) {
+  await findOrCreateProfile(db, userId)
+  const { completeOnboarding, ...fields } = update
+  const [updated] = await db
+    .update(profiles)
+    .set({
+      ...fields,
+      ...(completeOnboarding && { onboardedAt: sql`coalesce(${profiles.onboardedAt}, now())` }),
+    })
+    .where(eq(profiles.id, userId))
+    .returning()
+  if (!updated) throw new Error('profile not found for update')
+  return updated
 }

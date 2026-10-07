@@ -1,4 +1,12 @@
 import { z } from 'zod'
+import {
+  isCurrencyCode,
+  isTimeZone,
+  MODULE_IDS,
+  themePreferenceSchema,
+  type ModuleId,
+  type ThemePreference,
+} from './preferences'
 
 /** Request and response shapes shared by the API and the web app. */
 
@@ -82,7 +90,41 @@ export interface UserProfile {
   weekStartsOn: number
   /** ISO timestamp of when the setup wizard was finished, or null. */
   onboardedAt: string | null
+  enabledModules: ModuleId[]
+  /** Null until the user picks one; the browser's stored choice applies meanwhile. */
+  theme: ThemePreference | null
 }
+
+/** Partial update of the profile; `completeOnboarding` marks the setup wizard as done. */
+export const profileUpdateSchema = z
+  .strictObject({
+    displayName: z
+      .string()
+      .trim()
+      .min(1, { error: 'Escribe un nombre o déjalo vacío.' })
+      .max(80, { error: 'Usa como mucho 80 caracteres.' })
+      .nullable()
+      .optional(),
+    currency: z
+      .string()
+      .refine(isCurrencyCode, { error: 'Elige una moneda de la lista.' })
+      .optional(),
+    timezone: z
+      .string()
+      .max(64)
+      .refine(isTimeZone, { error: 'Elige una zona horaria de la lista.' })
+      .optional(),
+    weekStartsOn: z.int().min(1).max(7).optional(),
+    enabledModules: z
+      .array(z.enum(MODULE_IDS))
+      .min(1, { error: 'Activa al menos un módulo.' })
+      .refine((ids) => new Set(ids).size === ids.length, { error: 'Hay módulos repetidos.' })
+      .optional(),
+    theme: themePreferenceSchema.optional(),
+    completeOnboarding: z.literal(true).optional(),
+  })
+  .refine((update) => Object.keys(update).length > 0, { error: 'No hay nada que guardar.' })
+export type ProfileUpdate = z.infer<typeof profileUpdateSchema>
 
 export type UserRole = 'user' | 'admin'
 

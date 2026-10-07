@@ -1,0 +1,3 @@
+ALTER TABLE "profiles" ADD COLUMN "enabled_modules" text[] DEFAULT '{finances,commission,debts,savings,budgets,planning}' NOT NULL;--> statement-breakpoint
+ALTER TABLE "profiles" ADD COLUMN "theme" jsonb;--> statement-breakpoint
+ALTER TABLE "profiles" ADD CONSTRAINT "profiles_enabled_modules_valid" CHECK (cardinality("profiles"."enabled_modules") >= 1 and "profiles"."enabled_modules" <@ '{finances,commission,debts,savings,budgets,planning}'::text[]);

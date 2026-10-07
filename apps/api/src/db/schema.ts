@@ -1,5 +1,15 @@
+import { MODULE_IDS, type ModuleId, type ThemePreference } from '@pf/shared'
 import { sql } from 'drizzle-orm'
-import { check, pgPolicy, pgTable, smallint, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import {
+  check,
+  jsonb,
+  pgPolicy,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core'
 import { authUsers } from 'drizzle-orm/supabase'
 
 // Tables are declared without a schema: the role's search_path decides between `app` and `app_dev`
@@ -25,6 +35,14 @@ export const profiles = pgTable(
     // ISO weekday: 1 = Monday … 7 = Sunday.
     weekStartsOn: smallint('week_starts_on').notNull().default(1),
     onboardedAt: timestamp('onboarded_at', { withTimezone: true }),
+    // All modules until the setup wizard asks.
+    enabledModules: text('enabled_modules')
+      .array()
+      .$type<ModuleId[]>()
+      .notNull()
+      .default(sql`'{${sql.raw(MODULE_IDS.join(','))}}'`),
+    // Null until the user picks a theme; validated by the API (themePreferenceSchema).
+    theme: jsonb('theme').$type<ThemePreference>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
@@ -33,6 +51,10 @@ export const profiles = pgTable(
   },
   (t) => [
     check('profiles_display_name_length', sql`char_length(${t.displayName}) between 1 and 80`),
+    check(
+      'profiles_enabled_modules_valid',
+      sql`cardinality(${t.enabledModules}) >= 1 and ${t.enabledModules} <@ '{${sql.raw(MODULE_IDS.join(','))}}'::text[]`,
+    ),
     check('profiles_currency_format', sql`${t.currency} ~ '^[A-Z]{3}$'`),
     check('profiles_week_starts_on_range', sql`${t.weekStartsOn} between 1 and 7`),
     // No delete policy: accounts are deleted through Supabase Auth, which cascades here.
