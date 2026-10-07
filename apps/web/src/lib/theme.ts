@@ -1,35 +1,42 @@
 // Theme and light/dark mode. The choice is kept in localStorage so public/theme-init.js can apply
-// it before the first paint (no flash); keep the key and the values in sync with that file.
+// it before the first paint (no flash), and in the profile so it follows the user to other devices.
+// Keep the storage key and the theme ids in sync with public/theme-init.js (checked by
+// scripts/check-contrast.mjs).
+import {
+  THEME_IDS,
+  THEME_MODES,
+  type ThemeId,
+  type ThemeMode,
+  type ThemePreference,
+} from '@pf/shared'
 
-export const THEMES = [
-  { id: 'libreta', label: 'Libreta' },
-  { id: 'cobalto', label: 'Cobalto' },
-  { id: 'neutro', label: 'Neutro' },
-  { id: 'contraste', label: 'Alto contraste' },
-] as const
-export type ThemeId = (typeof THEMES)[number]['id']
+export type { ThemePreference }
 
-export const MODES = [
-  { id: 'system', label: 'Como el sistema' },
-  { id: 'light', label: 'Claro' },
-  { id: 'dark', label: 'Oscuro' },
-] as const
-export type ModePreference = (typeof MODES)[number]['id']
-
-export interface ThemePreference {
-  theme: ThemeId
-  mode: ModePreference
+const THEME_LABELS: Record<ThemeId, string> = {
+  libreta: 'Libreta',
+  cobalto: 'Cobalto',
+  malva: 'Malva',
+  neutro: 'Neutro',
+  contraste: 'Alto contraste',
 }
+export const THEMES = THEME_IDS.map((id) => ({ id, label: THEME_LABELS[id] }))
+
+const MODE_LABELS: Record<ThemeMode, string> = {
+  system: 'Como el sistema',
+  light: 'Claro',
+  dark: 'Oscuro',
+}
+export const MODES = THEME_MODES.map((id) => ({ id, label: MODE_LABELS[id] }))
 
 export const DEFAULT_THEME: ThemePreference = { theme: 'libreta', mode: 'system' }
 const STORAGE_KEY = 'libreta.theme'
 
 function isThemeId(value: unknown): value is ThemeId {
-  return THEMES.some(({ id }) => id === value)
+  return THEME_IDS.some((id) => id === value)
 }
 
-function isMode(value: unknown): value is ModePreference {
-  return MODES.some(({ id }) => id === value)
+function isMode(value: unknown): value is ThemeMode {
+  return THEME_MODES.some((id) => id === value)
 }
 
 export function readThemePreference(): ThemePreference {
@@ -57,7 +64,7 @@ export function storeThemePreference(preference: ThemePreference) {
 
 const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)')
 
-export function resolvedMode(mode: ModePreference): 'light' | 'dark' {
+export function resolvedMode(mode: ThemeMode): 'light' | 'dark' {
   if (mode !== 'system') return mode
   return darkQuery().matches ? 'dark' : 'light'
 }

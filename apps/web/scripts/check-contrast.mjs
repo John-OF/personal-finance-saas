@@ -1,5 +1,6 @@
 // Checks that every text/background pair of every theme meets WCAG AA (4.5:1 for text, 3:1 for
-// borders of form controls and focus rings). Run: node apps/web/scripts/check-contrast.mjs
+// borders of form controls and focus rings), and that the theme list matches everywhere.
+// Run: node apps/web/scripts/check-contrast.mjs (part of `pnpm test`).
 import { readFileSync } from 'node:fs'
 
 const css = readFileSync(new URL('../src/styles/themes.css', import.meta.url), 'utf8')
@@ -61,7 +62,36 @@ for (const [name, tokens] of Object.entries(themes)) {
     }
   }
 }
+// The theme ids are listed in three places; they must match.
+const cssIds = [...new Set(Object.keys(themes).map((key) => key.split('/')[0]))].sort()
+const preferences = readFileSync(
+  new URL('../../../packages/shared/src/preferences.ts', import.meta.url),
+  'utf8',
+)
+const appIds = [
+  ...(/THEME_IDS = \[([^\]]+)\]/.exec(preferences)?.[1] ?? '').matchAll(/'([a-z]+)'/g),
+]
+  .map(([, id]) => id)
+  .sort()
+const initScript = readFileSync(new URL('../public/theme-init.js', import.meta.url), 'utf8')
+const initIds = [
+  ...(/var themes = \[([^\]]+)\]/.exec(initScript)?.[1] ?? '').matchAll(/'([a-z]+)'/g),
+]
+  .map(([, id]) => id)
+  .sort()
+for (const [where, ids] of [
+  ['packages/shared/src/preferences.ts (THEME_IDS)', appIds],
+  ['public/theme-init.js', initIds],
+]) {
+  if (ids.join() !== cssIds.join()) {
+    failures++
+    console.log(`✗ ${where} tiene [${ids.join(', ')}] y themes.css [${cssIds.join(', ')}]`)
+  }
+}
+
 console.log(
-  failures === 0 ? `✓ ${Object.keys(themes).length} variantes cumplen AA` : `${failures} fallos`,
+  failures === 0
+    ? `✓ ${Object.keys(themes).length} variantes cumplen AA; temas sincronizados: ${cssIds.join(', ')}`
+    : `${failures} fallos`,
 )
 process.exitCode = failures === 0 ? 0 : 1

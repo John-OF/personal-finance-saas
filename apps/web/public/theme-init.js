@@ -1,7 +1,7 @@
 // Applies the stored theme before the first paint, so the page never flashes in the wrong colours.
 // A separate file because the CSP forbids inline scripts. Mirrors src/lib/theme.ts.
 ;(function () {
-  var themes = ['libreta', 'cobalto', 'neutro', 'contraste']
+  var themes = ['libreta', 'cobalto', 'malva', 'neutro', 'contraste']
   var modes = ['system', 'light', 'dark']
   var theme = 'libreta'
   var mode = 'system'
