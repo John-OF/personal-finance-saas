@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
-import { Link, Navigate, NavLink, Outlet } from 'react-router'
+import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router'
+import { useMe } from './me-context'
+import { MeProvider } from './MeProvider'
 import { NAV_ITEMS } from './nav'
 import { useSession } from './session-context'
 
@@ -17,14 +19,31 @@ function CheckingSession() {
 }
 
 /**
- * Signed-in pages: header, tabs on wide screens and a bottom bar on phones. Signed-out visitors go
- * to the login page.
+ * Every signed-in route: sends signed-out visitors to the login page, loads the profile, and keeps
+ * users who have not finished the setup wizard on /welcome.
  */
-export function AppLayout() {
+export function SignedIn() {
   const { user } = useSession()
   if (user === undefined) return <CheckingSession />
   if (user === null) return <Navigate to="/login" replace />
+  return (
+    <MeProvider>
+      <OnboardingGate />
+    </MeProvider>
+  )
+}
 
+function OnboardingGate() {
+  const { me } = useMe()
+  const { pathname } = useLocation()
+  const onboarded = me.profile.onboardedAt !== null
+  if (!onboarded && pathname !== '/welcome') return <Navigate to="/welcome" replace />
+  if (onboarded && pathname === '/welcome') return <Navigate to="/" replace />
+  return <Outlet />
+}
+
+/** Signed-in pages: header, tabs on wide screens and a bottom bar on phones. */
+export function AppLayout() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-border">

@@ -1,5 +1,5 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
-import { AppLayout, GuestLayout, GuestOnly } from './app/layouts'
+import { AppLayout, GuestLayout, GuestOnly, SignedIn } from './app/layouts'
 import { SessionProvider } from './app/SessionProvider'
 import { AuthCard } from './components/ui/form'
 import { ConfirmEmailPage } from './features/auth/ConfirmEmailPage'
@@ -8,6 +8,7 @@ import { LoginPage } from './features/auth/LoginPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignupPage } from './features/auth/SignupPage'
 import { HomePage } from './features/home/HomePage'
+import { OnboardingPage } from './features/onboarding/OnboardingPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 
 // The Worker serves index.html for every path outside /api, so these routes work on reload.
@@ -18,9 +19,12 @@ export function App() {
     <SessionProvider>
       <BrowserRouter>
         <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="settings" element={<SettingsPage />} />
+          <Route element={<SignedIn />}>
+            <Route path="welcome" element={<OnboardingPage />} />
+            <Route element={<AppLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
           </Route>
           <Route element={<GuestLayout />}>
             <Route
