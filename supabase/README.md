@@ -7,9 +7,9 @@ valores secretos (contraseña de aplicación de Gmail, secreto de Turnstile) se 
 
 _Authentication → URL Configuration_
 
-- **Site URL:** `https://personal-finance.jhondarkx.workers.dev`
+- **Site URL:** `https://libreta.proint.workers.dev`
 - **Redirect URLs:**
-  - `https://personal-finance.jhondarkx.workers.dev/**`
+  - `https://libreta.proint.workers.dev/**`
   - `http://localhost:5173/**` (desarrollo con Vite)
 
 La API pasa a Supabase la URL de vuelta según el origen de la petición (`/auth/confirm`,
@@ -28,10 +28,10 @@ _Authentication → Sign In / Providers → Email_
 
 _Authentication → Emails → Templates_
 
-| Plantilla      | Asunto                                  | Cuerpo                                |
-| -------------- | --------------------------------------- | ------------------------------------- |
-| Confirm signup | `Confirma tu correo en Billetera`       | `email-templates/confirm-signup.html` |
-| Reset password | `Restablece tu contraseña de Billetera` | `email-templates/reset-password.html` |
+| Plantilla      | Asunto                                | Cuerpo                                |
+| -------------- | ------------------------------------- | ------------------------------------- |
+| Confirm signup | `Confirma tu correo en Libreta`       | `email-templates/confirm-signup.html` |
+| Reset password | `Restablece tu contraseña de Libreta` | `email-templates/reset-password.html` |
 
 Los enlaces llevan `token_hash`: la API los verifica con `verifyOtp`, así que funcionan aunque el correo
 se abra en otro dispositivo.
@@ -44,7 +44,7 @@ equipo y 2 correos por hora.
 - **Host:** `smtp.gmail.com` · **Puerto:** `465`
 - **Usuario:** la cuenta de Gmail · **Contraseña:** una _contraseña de aplicación_ de Google (exige la
   verificación en dos pasos; se crea en _Cuenta de Google → Seguridad → Contraseñas de aplicaciones_).
-- **Remitente:** la misma cuenta · **Nombre:** `Billetera`
+- **Remitente:** la misma cuenta · **Nombre:** `Libreta`
 
 Gmail admite unos 500 correos al día (plan, §12).
 
@@ -63,7 +63,7 @@ por IP del cliente (plan, §9.7):
 ## CAPTCHA (Turnstile)
 
 1. En Cloudflare, _Turnstile → Add widget_: modo _Managed_, dominios
-   `personal-finance.jhondarkx.workers.dev` y `localhost`.
+   `libreta.proint.workers.dev` y `localhost`.
 2. La _site key_ (pública) va en `apps/web/src/lib/config.ts` y se despliega.
 3. Solo después, en _Authentication → Attack Protection → CAPTCHA protection_: proveedor Turnstile y el
    _secret key_. Activarlo antes del paso 2 rompe el login, porque la web aún no envía el token.

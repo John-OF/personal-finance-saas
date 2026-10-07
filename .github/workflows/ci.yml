@@ -44,7 +44,7 @@ jobs:
     # The API token is an environment secret: only jobs that declare this environment can read it.
     environment:
       name: production
-      url: https://personal-finance.jhondarkx.workers.dev
+      url: https://libreta.proint.workers.dev
     steps:
       - uses: actions/checkout@v7
 

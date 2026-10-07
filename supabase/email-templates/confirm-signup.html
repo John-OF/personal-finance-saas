@@ -1,10 +1,10 @@
 <!--
   Supabase → Authentication → Emails → Templates → "Confirm signup".
-  Subject: Confirma tu correo en Billetera
+  Subject: Confirma tu correo en Libreta
   {{ .RedirectTo }} is the /auth/confirm URL the API passes (production or local); it must be in the
   redirect allowlist. The page asks for a click before using the single-use token.
 -->
 <h2>Confirma tu correo</h2>
-<p>Hola. Para activar tu cuenta de Billetera, abre este enlace:</p>
+<p>Hola. Para activar tu cuenta de Libreta, abre este enlace:</p>
 <p><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email">Confirmar mi correo</a></p>
-<p>Si no creaste una cuenta en Billetera, ignora este mensaje.</p>
+<p>Si no creaste una cuenta en Libreta, ignora este mensaje.</p>
