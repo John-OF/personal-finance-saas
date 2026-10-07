@@ -28,11 +28,15 @@ export default tseslint.config(
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
   },
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    files: ['apps/api/scripts/**/*.js'],
+    files: ['apps/api/scripts/**/*.js', 'apps/web/scripts/**/*.mjs'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['apps/web/public/**/*.js'],
+    languageOptions: { globals: globals.browser },
   },
 )

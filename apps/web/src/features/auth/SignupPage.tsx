@@ -33,7 +33,7 @@ export function SignupPage() {
           cuenta. Ábrelo en este u otro dispositivo; si no lo ves en unos minutos, revisa la carpeta
           de spam.
         </p>
-        <Link to="/login" className="text-sm text-brand underline">
+        <Link to="/login" className="text-sm text-link underline">
           Volver a iniciar sesión
         </Link>
       </AuthCard>
@@ -78,7 +78,7 @@ export function SignupPage() {
       </form>
       <p className="text-sm">
         ¿Ya tienes cuenta?{' '}
-        <Link to="/login" className="text-brand underline">
+        <Link to="/login" className="text-link underline">
           Inicia sesión
         </Link>
       </p>

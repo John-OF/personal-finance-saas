@@ -1,17 +1,45 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/archivo';
+@import './styles/themes.css';
 
-@theme {
-  --color-ink: #10201b;
-  --color-paper: #e9ede6;
-  --color-card: #fbfcfa;
-  --color-line: #c7d1c8;
-  --color-muted: #5c6a62;
-  --color-brand: #1d6b4f;
-  --color-danger: #8c2f39;
+/* Theme tokens as Tailwind utilities: bg-background, text-muted-foreground, border-input, … */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--link);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-ring: var(--ring);
+  --font-sans: var(--app-font-sans);
+  --font-heading: var(--app-font-heading);
 }
 
 @layer base {
+  html {
+    color-scheme: light;
+  }
+  html[data-mode='dark'] {
+    color-scheme: dark;
+  }
   body {
-    @apply min-h-screen bg-paper text-ink antialiased;
+    @apply min-h-dvh bg-background font-sans text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }

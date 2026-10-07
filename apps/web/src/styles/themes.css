@@ -1,0 +1,161 @@
+/*
+ * Design tokens per theme and mode, named like shadcn/ui's so its components can be added later.
+ * <html data-theme="libreta|cobalto|neutro|contraste" data-mode="light|dark"> selects them; the
+ * attributes are set before the first paint by public/theme-init.js. Every text/background pair
+ * meets WCAG AA (checked with scripts/check-contrast.mjs).
+ */
+
+:root,
+[data-theme='libreta'] {
+  /* "Libreta" prototype: paper, ink, green, ochre and garnet; serif headings. */
+  --background: #e9ede6;
+  --foreground: #10201b;
+  --card: #fbfcfa;
+  --muted: #f4f7f2;
+  --muted-foreground: #56645c;
+  --border: #c7d1c8;
+  --input: #78867d;
+  --primary: #1d6b4f;
+  --primary-foreground: #fbfcfa;
+  --link: #1a6047;
+  --accent: #b8802a;
+  --accent-foreground: #10201b;
+  --destructive: #8c2f39;
+  --success: #1a6047;
+  --ring: #1d6b4f;
+  --app-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --app-font-heading: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+}
+
+[data-theme='libreta'][data-mode='dark'] {
+  --background: #0f1714;
+  --foreground: #e3eae4;
+  --card: #16201c;
+  --muted: #1c2823;
+  --muted-foreground: #9fafa5;
+  --border: #2b3b34;
+  --input: #5b6d63;
+  --primary: #5fbf94;
+  --primary-foreground: #0f1714;
+  --link: #6fcaa1;
+  --accent: #d9a54a;
+  --accent-foreground: #0f1714;
+  --destructive: #ee8a94;
+  --success: #6fcaa1;
+  --ring: #5fbf94;
+}
+
+[data-theme='cobalto'] {
+  /* "Mis ingresos" prototype: cobalt and marigold, Archivo. */
+  --background: #eef0f7;
+  --foreground: #171a3a;
+  --card: #ffffff;
+  --muted: #f4f5fa;
+  --muted-foreground: #565b80;
+  --border: #d8dbea;
+  --input: #8b90b4;
+  --primary: #2b3bcf;
+  --primary-foreground: #ffffff;
+  --link: #2b3bcf;
+  --accent: #ffb529;
+  --accent-foreground: #171a3a;
+  --destructive: #c8323c;
+  --success: #17784d;
+  --ring: #2b3bcf;
+  --app-font-sans: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --app-font-heading: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+}
+
+[data-theme='cobalto'][data-mode='dark'] {
+  --background: #0e1130;
+  --foreground: #eceeff;
+  --card: #171b40;
+  --muted: #1f2450;
+  --muted-foreground: #a3a8d2;
+  --border: #2c3165;
+  --input: #6d73ad;
+  --primary: #a9b2ff;
+  --primary-foreground: #0e1130;
+  --link: #a9b2ff;
+  --accent: #ffbe3d;
+  --accent-foreground: #0e1130;
+  --destructive: #ff8088;
+  --success: #5ad6a0;
+  --ring: #a9b2ff;
+}
+
+[data-theme='neutro'] {
+  --background: #f5f5f4;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --muted: #fafaf9;
+  --muted-foreground: #57534e;
+  --border: #d6d3d1;
+  --input: #8f8a85;
+  --primary: #1c1917;
+  --primary-foreground: #fafaf9;
+  --link: #1d4ed8;
+  --accent: #a16207;
+  --accent-foreground: #ffffff;
+  --destructive: #b91c1c;
+  --success: #15803d;
+  --ring: #1d4ed8;
+  --app-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --app-font-heading: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+[data-theme='neutro'][data-mode='dark'] {
+  --background: #0c0a09;
+  --foreground: #f5f5f4;
+  --card: #1c1917;
+  --muted: #292524;
+  --muted-foreground: #a8a29e;
+  --border: #3a3532;
+  --input: #6b6560;
+  --primary: #f5f5f4;
+  --primary-foreground: #0c0a09;
+  --link: #93c5fd;
+  --accent: #facc15;
+  --accent-foreground: #0c0a09;
+  --destructive: #f87171;
+  --success: #4ade80;
+  --ring: #93c5fd;
+}
+
+[data-theme='contraste'] {
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --muted: #f2f2f2;
+  --muted-foreground: #1f1f1f;
+  --border: #000000;
+  --input: #000000;
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+  --link: #0000c8;
+  --accent: #6b4e00;
+  --accent-foreground: #ffffff;
+  --destructive: #a40000;
+  --success: #005a00;
+  --ring: #0000c8;
+  --app-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --app-font-heading: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+[data-theme='contraste'][data-mode='dark'] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --muted: #141414;
+  --muted-foreground: #e6e6e6;
+  --border: #ffffff;
+  --input: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --link: #9cd3ff;
+  --accent: #ffd24d;
+  --accent-foreground: #000000;
+  --destructive: #ff9c9c;
+  --success: #7cfc7c;
+  --ring: #9cd3ff;
+}

@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, ReactNode } from 'react'
 
 export function AuthCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 rounded border border-line bg-card p-5">
+    <section className="flex flex-col gap-4 rounded border border-border bg-card p-5">
       <h2 className="text-lg font-medium">{title}</h2>
       {children}
     </section>
@@ -26,11 +26,11 @@ export function TextField({ label, name, errors, ...input }: TextFieldProps) {
         name={name}
         aria-invalid={invalid}
         aria-describedby={invalid ? errorId : undefined}
-        className="rounded border border-line bg-white px-3 py-2 text-base aria-invalid:border-danger"
+        className="rounded border border-input bg-card px-3 py-2 text-base aria-invalid:border-destructive"
         {...input}
       />
       {invalid && (
-        <span id={errorId} className="text-danger">
+        <span id={errorId} className="text-destructive">
           {errors?.[0]}
         </span>
       )}
@@ -53,7 +53,7 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={busy || disabled}
-      className="rounded bg-ink px-4 py-2 text-paper hover:bg-brand disabled:opacity-50"
+      className="rounded bg-primary px-4 py-2 text-primary-foreground hover:opacity-90 disabled:opacity-50"
     >
       {busy ? busyLabel : children}
     </button>
@@ -70,7 +70,7 @@ export function FormAlert({
   return (
     <p
       role={tone === 'error' ? 'alert' : 'status'}
-      className={tone === 'error' ? 'text-sm text-danger' : 'text-sm text-brand'}
+      className={tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-success'}
     >
       {children}
     </p>

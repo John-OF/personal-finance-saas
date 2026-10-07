@@ -53,12 +53,12 @@ export function LoginPage() {
         </SubmitButton>
       </form>
       <nav className="flex flex-col gap-1 text-sm">
-        <Link to="/forgot-password" className="text-brand underline">
+        <Link to="/forgot-password" className="text-link underline">
           ¿Olvidaste tu contraseña?
         </Link>
         <span>
           ¿No tienes cuenta?{' '}
-          <Link to="/signup" className="text-brand underline">
+          <Link to="/signup" className="text-link underline">
             Crear cuenta
           </Link>
         </span>

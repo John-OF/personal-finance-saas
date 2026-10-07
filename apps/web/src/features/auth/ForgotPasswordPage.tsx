@@ -26,7 +26,7 @@ export function ForgotPasswordPage() {
           Si hay una cuenta con <strong>{email}</strong>, te enviamos un enlace para elegir una
           contraseña nueva. Caduca en una hora y solo sirve una vez.
         </p>
-        <Link to="/login" className="text-sm text-brand underline">
+        <Link to="/login" className="text-sm text-link underline">
           Volver a iniciar sesión
         </Link>
       </AuthCard>
@@ -51,7 +51,7 @@ export function ForgotPasswordPage() {
           Enviar enlace
         </SubmitButton>
       </form>
-      <Link to="/login" className="text-sm text-brand underline">
+      <Link to="/login" className="text-sm text-link underline">
         Volver a iniciar sesión
       </Link>
     </AuthCard>

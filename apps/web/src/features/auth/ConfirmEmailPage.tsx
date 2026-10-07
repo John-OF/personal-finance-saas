@@ -39,7 +39,7 @@ export function ConfirmEmailPage() {
     return (
       <AuthCard title="Enlace incompleto">
         <p>Abre el enlace completo del correo que te enviamos.</p>
-        <Link to="/login" className="text-sm text-brand underline">
+        <Link to="/login" className="text-sm text-link underline">
           Ir a iniciar sesión
         </Link>
       </AuthCard>
@@ -54,12 +54,12 @@ export function ConfirmEmailPage() {
         type="button"
         disabled={busy}
         onClick={() => void confirm(tokenHash)}
-        className="rounded bg-ink px-4 py-2 text-paper hover:bg-brand disabled:opacity-50"
+        className="rounded bg-primary px-4 py-2 text-primary-foreground hover:opacity-90 disabled:opacity-50"
       >
         {busy ? 'Confirmando…' : 'Confirmar mi correo'}
       </button>
       {error && (
-        <Link to="/login" className="text-sm text-brand underline">
+        <Link to="/login" className="text-sm text-link underline">
           Ir a iniciar sesión
         </Link>
       )}

@@ -35,7 +35,7 @@ export function ResetPasswordPage() {
     return (
       <AuthCard title="Enlace incompleto">
         <p>Abre el enlace completo del correo que te enviamos, o pide uno nuevo.</p>
-        <Link to="/forgot-password" className="text-sm text-brand underline">
+        <Link to="/forgot-password" className="text-sm text-link underline">
           Pedir un enlace nuevo
         </Link>
       </AuthCard>
@@ -69,7 +69,7 @@ export function ResetPasswordPage() {
         </SubmitButton>
       </form>
       {form.error && (
-        <Link to="/forgot-password" className="text-sm text-brand underline">
+        <Link to="/forgot-password" className="text-sm text-link underline">
           Pedir un enlace nuevo
         </Link>
       )}
