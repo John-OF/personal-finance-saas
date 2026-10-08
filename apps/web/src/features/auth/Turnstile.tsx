@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { TURNSTILE_SITE_KEY } from '../../lib/config'
 
-// Cloudflare Turnstile, the captcha Supabase Auth checks on signup, login and password recovery.
+// Cloudflare Turnstile, the captcha Supabase Auth checks on signup, login (also when the password is
+// changed, which signs in again) and password recovery.
 // Allowed by the CSP in public/_headers (script-src and frame-src challenges.cloudflare.com).
 
 interface TurnstileApi {
@@ -55,7 +56,7 @@ export function Turnstile({
   action,
   onToken,
 }: {
-  action: 'login' | 'signup' | 'recover'
+  action: 'login' | 'signup' | 'recover' | 'change_password'
   onToken: (token: string | null) => void
 }) {
   const container = useRef<HTMLDivElement>(null)

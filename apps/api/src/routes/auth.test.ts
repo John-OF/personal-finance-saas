@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { app } from '../app'
-import { createExecutionContext, createTestEnv } from '../test/app'
+import { createExecutionContext, createTestEnv, TEST_USER_HEADER } from '../test/app'
 
 const auth = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
@@ -11,6 +11,7 @@ const auth = vi.hoisted(() => ({
   signOut: vi.fn(),
 }))
 vi.mock('../lib/supabase', () => ({ createSupabase: () => ({ auth }) }))
+vi.mock('../lib/session', async () => (await import('../test/app')).mockSession())
 
 const ORIGIN = 'http://localhost'
 const USER = { id: '00000000-0000-4000-8000-00000000000a', email: 'ana@example.com' }
@@ -25,15 +26,14 @@ beforeEach(() => {
   auth.signOut.mockResolvedValue({ error: null })
 })
 
-async function post(path: string, body: unknown) {
+/** POST as an anonymous visitor, or as `userId` (whose session email is `<last char>@example.com`). */
+async function post(path: string, body: unknown, userId?: string) {
   const { ctx } = createExecutionContext()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Origin: ORIGIN }
+  if (userId) headers[TEST_USER_HEADER] = userId
   return app.request(
     `/api/v1/auth${path}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-      body: JSON.stringify(body),
-    },
+    { method: 'POST', headers, body: JSON.stringify(body) },
     createTestEnv('postgresql://unused@127.0.0.1:1/db'),
     ctx,
   )
@@ -197,5 +197,114 @@ describe('POST /login', () => {
       password: 'x',
       options: { captchaToken: 'turnstile-token' },
     })
+  })
+})
+
+describe('POST /change-password', () => {
+  const input = { currentPassword: 'la-clave-de-antes', password: GOOD_PASSWORD, captchaToken: 't' }
+
+  function signInSucceeds(user = USER) {
+    auth.signInWithPassword.mockResolvedValue({ data: { user, session: {} }, error: null })
+  }
+
+  it('requires a session', async () => {
+    expect((await post('/change-password', input)).status).toBe(401)
+    expect(auth.signInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['without the current password', { ...input, currentPassword: '' }, 'currentPassword'],
+    ['with a short new password', { ...input, password: 'corta' }, 'password'],
+    ['reusing the current password', { ...input, password: input.currentPassword }, 'password'],
+  ])('rejects a request %s before calling Supabase', async (_case, body, field) => {
+    const res = await post('/change-password', body, USER.id)
+    expect(res.status).toBe(400)
+    const { error } = await res.json<{ error: { fields: Record<string, string[]> } }>()
+    expect(Object.keys(error.fields)).toEqual([field])
+    expect(auth.signInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it('checks the current password, sets the new one and ends the other sessions', async () => {
+    signInSucceeds()
+    auth.updateUser.mockResolvedValue({ data: { user: USER }, error: null })
+    const res = await post('/change-password', input, USER.id)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ status: 'password_changed', otherSessionsClosed: true })
+    expect(auth.signInWithPassword).toHaveBeenCalledWith({
+      email: 'a@example.com',
+      password: input.currentPassword,
+      options: { captchaToken: 't' },
+    })
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: GOOD_PASSWORD })
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'others' })
+  })
+
+  it('changes nothing when the current password is wrong', async () => {
+    auth.signInWithPassword.mockResolvedValue(authError('invalid_credentials'))
+    const res = await post('/change-password', input, USER.id)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({
+      error: {
+        code: 'invalid_current_password',
+        fields: { currentPassword: ['La contraseña actual no es correcta.'] },
+      },
+    })
+    expect(auth.updateUser).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed captcha', async () => {
+    auth.signInWithPassword.mockResolvedValue(authError('captcha_failed'))
+    const res = await post('/change-password', input, USER.id)
+    expect(await res.json()).toMatchObject({ error: { code: 'captcha_failed' } })
+    expect(auth.updateUser).not.toHaveBeenCalled()
+  })
+
+  it('reports a password Supabase finds too weak, keeping the other sessions', async () => {
+    signInSucceeds()
+    auth.updateUser.mockResolvedValue({
+      data: { user: null },
+      error: { code: 'weak_password', status: 422 },
+    })
+    const res = await post('/change-password', input, USER.id)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: { code: 'weak_password' } })
+    expect(auth.signOut).not.toHaveBeenCalled()
+  })
+
+  it('says so when the other sessions could not be ended', async () => {
+    signInSucceeds()
+    auth.updateUser.mockResolvedValue({ data: { user: USER }, error: null })
+    auth.signOut.mockResolvedValue({ error: { status: 500, code: 'unexpected_failure' } })
+    const res = await post('/change-password', input, USER.id)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ status: 'password_changed', otherSessionsClosed: false })
+  })
+
+  it('drops the new session if the email now belongs to another account', async () => {
+    signInSucceeds({ id: '00000000-0000-4000-8000-0000000000ff', email: 'a@example.com' })
+    const res = await post('/change-password', input, USER.id)
+    expect(res.status).toBe(401)
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(auth.updateUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /logout-all', () => {
+  it('requires a session', async () => {
+    expect((await post('/logout-all', {})).status).toBe(401)
+    expect(auth.signOut).not.toHaveBeenCalled()
+  })
+
+  it('ends every session of the user', async () => {
+    const res = await post('/logout-all', {}, USER.id)
+    expect(res.status).toBe(204)
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'global' })
+  })
+
+  it('reports when Supabase could not end them', async () => {
+    auth.signOut.mockResolvedValue({ error: { status: 500, code: 'unexpected_failure' } })
+    const res = await post('/logout-all', {}, USER.id)
+    expect(res.status).toBe(502)
+    expect(await res.json()).toMatchObject({ error: { code: 'auth_unavailable' } })
   })
 })

@@ -60,6 +60,25 @@ export const resetPasswordInputSchema = z.strictObject({
 })
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>
 
+/** Changing the password while signed in: the current one is required, and must not be reused. */
+export const changePasswordInputSchema = z
+  .strictObject({
+    currentPassword: z.string().min(1, { error: 'Escribe tu contraseña actual.' }).max(256),
+    password: newPasswordSchema,
+    captchaToken: captchaTokenSchema,
+  })
+  .refine(({ currentPassword, password }) => currentPassword !== password, {
+    error: 'Elige una contraseña distinta de la actual.',
+    path: ['password'],
+  })
+export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>
+
+export interface PasswordChangedResponse {
+  status: 'password_changed'
+  /** False if the password changed but the sessions on other devices could not be ended. */
+  otherSessionsClosed: boolean
+}
+
 /**
  * Answer to signup and password recovery. Always the same, whether or not the email is registered,
  * so the API does not reveal which accounts exist.

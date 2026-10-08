@@ -1,10 +1,12 @@
 import {
+  changePasswordInputSchema,
   forgotPasswordInputSchema,
   loginInputSchema,
   resetPasswordInputSchema,
   signupInputSchema,
   verifyEmailInputSchema,
   type EmailSentResponse,
+  type PasswordChangedResponse,
   type SessionResponse,
 } from '@pf/shared'
 import type { AuthError, User } from '@supabase/supabase-js'
@@ -197,9 +199,82 @@ export const authRoutes = new Hono<AppEnv>()
       return c.json(sessionBody(data.user))
     },
   )
+  .post(
+    '/change-password',
+    requireAuth,
+    limitAuthByIp('change_password'),
+    validate('json', changePasswordInputSchema),
+    async (c) => {
+      const email = c.var.userEmail
+      if (!email) {
+        return apiError(
+          c,
+          400,
+          'password_unavailable',
+          'Esta cuenta no tiene contraseña que cambiar.',
+        )
+      }
+      const { currentPassword, password, captchaToken } = c.req.valid('json')
+      const supabase = createSupabase(c)
+
+      // Signing in again is how the current password is checked: Supabase only checks
+      // current_password itself when a project setting is on. This browser gets a fresh session.
+      const signedIn = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+        options: captcha(captchaToken),
+      })
+      if (signedIn.error) {
+        if (signedIn.error.code === 'invalid_credentials') {
+          const message = 'La contraseña actual no es correcta.'
+          return apiError(c, 400, 'invalid_current_password', message, {
+            currentPassword: [message],
+          })
+        }
+        if (signedIn.error.code === 'user_banned') {
+          return apiError(c, 403, 'account_suspended', 'Tu cuenta está suspendida.')
+        }
+        return authFailure(c, signedIn.error, 'change_password')
+      }
+      // The email comes from the access token; if the account behind it changed meanwhile, the
+      // cookies now hold someone else's session and must not stay.
+      if (signedIn.data.user.id !== c.var.userId) {
+        await supabase.auth.signOut({ scope: 'local' })
+        return apiError(c, 401, 'unauthenticated', 'Inicia sesión de nuevo.')
+      }
+
+      const updated = await supabase.auth.updateUser({ password })
+      if (updated.error) {
+        if (updated.error.code === 'weak_password') return weakPassword(c)
+        return authFailure(c, updated.error, 'change_password')
+      }
+
+      // Whoever knew the old password must lose access. Asked explicitly rather than relying on
+      // what Supabase does by itself when the password changes.
+      const others = await supabase.auth.signOut({ scope: 'others' })
+      if (others.error) {
+        console.error('auth_sign_out_others_failed', {
+          status: others.error.status,
+          code: others.error.code,
+        })
+      }
+      const body: PasswordChangedResponse = {
+        status: 'password_changed',
+        otherSessionsClosed: !others.error,
+      }
+      return c.json(body)
+    },
+  )
   .post('/logout', async (c) => {
     // Revokes this session's refresh token and clears the cookies. Idempotent.
     await createSupabase(c).auth.signOut({ scope: 'local' })
+    return c.body(null, 204)
+  })
+  .post('/logout-all', requireAuth, async (c) => {
+    // Revokes the refresh tokens of every session of the user, this one included, and clears the
+    // cookies. Access tokens already issued stay valid until they expire (Supabase's JWT expiry).
+    const { error } = await createSupabase(c).auth.signOut({ scope: 'global' })
+    if (error) return authFailure(c, error, 'logout_all')
     return c.body(null, 204)
   })
   .get('/session', requireAuth, (c) => {
