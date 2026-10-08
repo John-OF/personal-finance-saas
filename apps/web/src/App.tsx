@@ -1,7 +1,8 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
-import { AppLayout, GuestLayout, GuestOnly, SignedIn } from './app/layouts'
+import { AdminOnly, AppLayout, GuestLayout, GuestOnly, SignedIn } from './app/layouts'
 import { SessionProvider } from './app/SessionProvider'
 import { AuthCard } from './components/ui/form'
+import { AdminPage } from './features/admin/AdminPage'
 import { ConfirmEmailPage } from './features/auth/ConfirmEmailPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
@@ -24,6 +25,14 @@ export function App() {
             <Route element={<AppLayout />}>
               <Route index element={<HomePage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route
+                path="admin"
+                element={
+                  <AdminOnly>
+                    <AdminPage />
+                  </AdminOnly>
+                }
+              />
             </Route>
           </Route>
           <Route element={<GuestLayout />}>

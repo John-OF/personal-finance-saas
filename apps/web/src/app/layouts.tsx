@@ -44,6 +44,9 @@ function OnboardingGate() {
 
 /** Signed-in pages: header, tabs on wide screens and a bottom bar on phones. */
 export function AppLayout() {
+  const { me } = useMe()
+  const navItems = NAV_ITEMS.filter(({ adminOnly }) => !adminOnly || me.role === 'admin')
+
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-border">
@@ -51,7 +54,7 @@ export function AppLayout() {
           <Brand />
         </div>
         <nav aria-label="Secciones" className="mx-auto hidden max-w-3xl gap-1 px-4 md:flex">
-          {NAV_ITEMS.map(({ to, label, end }) => (
+          {navItems.map(({ to, label, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -80,7 +83,7 @@ export function AppLayout() {
         className="fixed inset-x-0 bottom-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         <ul className="mx-auto flex max-w-md justify-around">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <li key={to} className="flex-1">
               <NavLink
                 to={to}
@@ -114,6 +117,13 @@ export function GuestLayout() {
       </main>
     </div>
   )
+}
+
+/** Admin pages: anyone else goes home (the API turns them away anyway). */
+export function AdminOnly({ children }: { children: ReactNode }) {
+  const { me } = useMe()
+  if (me.role !== 'admin') return <Navigate to="/" replace />
+  return children
 }
 
 /** Login and signup make no sense with a session: go home instead. */
