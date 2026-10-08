@@ -285,3 +285,43 @@ describe('session_is_active', () => {
     expect(await isActive(USER_A)).toBe(false)
   })
 })
+
+describe('commission tables: row-level security and composite foreign keys', () => {
+  const PLAN_A = '00000000-0000-4000-8000-0000000000a1'
+
+  beforeEach(async () => {
+    await migrate(db, TEST_SCHEMA, loadMigrations())
+    await db.exec(`
+      insert into auth.users (id) values ('${USER_A}'), ('${USER_B}');
+      set search_path to ${TEST_SCHEMA};
+      insert into profiles (id) values ('${USER_A}'), ('${USER_B}');
+      insert into commission_plans (id, user_id, name, period_end_weekday, payday_offset_days)
+        values ('${PLAN_A}', '${USER_A}', 'A', 6, 0);
+      insert into commission_entries (user_id, plan_id, date, amount_cents)
+        values ('${USER_A}', '${PLAN_A}', '2026-10-05', 1000);
+      set role ${TEST_ROLE};
+    `)
+  })
+
+  it("shows nothing of another user's plan", async () => {
+    const counts = await asUser(USER_B, async () => {
+      const plans = await db.query('select 1 from commission_plans')
+      const entries = await db.query('select 1 from commission_entries')
+      return [plans.rows.length, entries.rows.length]
+    })
+    expect(counts).toEqual([0, 0])
+  })
+
+  it("cannot hang an entry on another user's plan, under either user id", async () => {
+    const insert = (userId: string) =>
+      db.query(
+        `insert into commission_entries (user_id, plan_id, date, amount_cents)
+         values ($1, '${PLAN_A}', '2026-10-06', 1)`,
+        [userId],
+      )
+    // As itself: the composite foreign key finds no plan (B, PLAN_A).
+    await expect(asUser(USER_B, () => insert(USER_B))).rejects.toThrow(/foreign key/)
+    // As the owner: row-level security refuses a row for someone else.
+    await expect(asUser(USER_B, () => insert(USER_A))).rejects.toThrow(/row-level security/)
+  })
+})

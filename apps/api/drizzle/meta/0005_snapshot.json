@@ -1,0 +1,817 @@
+{
+  "id": "9389fc99-7a31-42e2-83f9-83686bedd25d",
+  "prevId": "714b285f-b337-491d-9458-16b1ee8431bd",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.commission_entries": {
+      "name": "commission_entries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "commission_entries_plan_id_date_idx": {
+          "name": "commission_entries_plan_id_date_idx",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "commission_entries_plan_fk": {
+          "name": "commission_entries_plan_fk",
+          "tableFrom": "commission_entries",
+          "tableTo": "commission_plans",
+          "columnsFrom": [
+            "user_id",
+            "plan_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "commission_entries_select_own": {
+          "name": "commission_entries_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_entries\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_entries_insert_own": {
+          "name": "commission_entries_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "\"commission_entries\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_entries_update_own": {
+          "name": "commission_entries_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_entries\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid",
+          "withCheck": "\"commission_entries\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_entries_delete_own": {
+          "name": "commission_entries_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_entries\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "commission_entries_amount_cents_range": {
+          "name": "commission_entries_amount_cents_range",
+          "value": "\"commission_entries\".\"amount_cents\" between 1 and 99999999999"
+        },
+        "commission_entries_note_length": {
+          "name": "commission_entries_note_length",
+          "value": "char_length(\"commission_entries\".\"note\") <= 80"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.commission_payouts": {
+      "name": "commission_payouts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payday": {
+          "name": "payday",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gross_cents": {
+          "name": "gross_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "percent_bp": {
+          "name": "percent_bp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_cents": {
+          "name": "expected_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paid_cents": {
+          "name": "paid_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "commission_payouts_plan_fk": {
+          "name": "commission_payouts_plan_fk",
+          "tableFrom": "commission_payouts",
+          "tableTo": "commission_plans",
+          "columnsFrom": [
+            "user_id",
+            "plan_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "commission_payouts_plan_id_payday_unique": {
+          "name": "commission_payouts_plan_id_payday_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "plan_id",
+            "payday"
+          ]
+        }
+      },
+      "policies": {
+        "commission_payouts_select_own": {
+          "name": "commission_payouts_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_payouts\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_payouts_insert_own": {
+          "name": "commission_payouts_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "\"commission_payouts\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_payouts_update_own": {
+          "name": "commission_payouts_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_payouts\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid",
+          "withCheck": "\"commission_payouts\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_payouts_delete_own": {
+          "name": "commission_payouts_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_payouts\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "commission_payouts_percent_bp_range": {
+          "name": "commission_payouts_percent_bp_range",
+          "value": "\"commission_payouts\".\"percent_bp\" between 1 and 10000"
+        },
+        "commission_payouts_gross_cents_range": {
+          "name": "commission_payouts_gross_cents_range",
+          "value": "\"commission_payouts\".\"gross_cents\" >= 0"
+        },
+        "commission_payouts_expected_cents_range": {
+          "name": "commission_payouts_expected_cents_range",
+          "value": "\"commission_payouts\".\"expected_cents\" >= 0"
+        },
+        "commission_payouts_paid_cents_range": {
+          "name": "commission_payouts_paid_cents_range",
+          "value": "\"commission_payouts\".\"paid_cents\" between 0 and 99999999999"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.commission_plans": {
+      "name": "commission_plans",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_end_weekday": {
+          "name": "period_end_weekday",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payday_offset_days": {
+          "name": "payday_offset_days",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "commission_plans_user_id_profiles_id_fk": {
+          "name": "commission_plans_user_id_profiles_id_fk",
+          "tableFrom": "commission_plans",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "commission_plans_user_id_id_unique": {
+          "name": "commission_plans_user_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {
+        "commission_plans_select_own": {
+          "name": "commission_plans_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_plans\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_plans_insert_own": {
+          "name": "commission_plans_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "\"commission_plans\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_plans_update_own": {
+          "name": "commission_plans_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_plans\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid",
+          "withCheck": "\"commission_plans\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_plans_delete_own": {
+          "name": "commission_plans_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_plans\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "commission_plans_name_length": {
+          "name": "commission_plans_name_length",
+          "value": "char_length(\"commission_plans\".\"name\") between 1 and 60"
+        },
+        "commission_plans_period_end_weekday_range": {
+          "name": "commission_plans_period_end_weekday_range",
+          "value": "\"commission_plans\".\"period_end_weekday\" between 0 and 6"
+        },
+        "commission_plans_payday_offset_days_range": {
+          "name": "commission_plans_payday_offset_days_range",
+          "value": "\"commission_plans\".\"payday_offset_days\" between 0 and 6"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.commission_rates": {
+      "name": "commission_rates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "percent_bp": {
+          "name": "percent_bp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_from": {
+          "name": "effective_from",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "commission_rates_plan_fk": {
+          "name": "commission_rates_plan_fk",
+          "tableFrom": "commission_rates",
+          "tableTo": "commission_plans",
+          "columnsFrom": [
+            "user_id",
+            "plan_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "commission_rates_plan_id_effective_from_unique": {
+          "name": "commission_rates_plan_id_effective_from_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "plan_id",
+            "effective_from"
+          ]
+        }
+      },
+      "policies": {
+        "commission_rates_select_own": {
+          "name": "commission_rates_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_rates\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_rates_insert_own": {
+          "name": "commission_rates_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "\"commission_rates\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_rates_update_own": {
+          "name": "commission_rates_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_rates\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid",
+          "withCheck": "\"commission_rates\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "commission_rates_delete_own": {
+          "name": "commission_rates_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "\"commission_rates\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "commission_rates_percent_bp_range": {
+          "name": "commission_rates_percent_bp_range",
+          "value": "\"commission_rates\".\"percent_bp\" between 1 and 10000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.profiles": {
+      "name": "profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'USD'"
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'es-EC'"
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'America/Guayaquil'"
+        },
+        "week_starts_on": {
+          "name": "week_starts_on",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "onboarded_at": {
+          "name": "onboarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enabled_modules": {
+          "name": "enabled_modules",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{finances,commission,debts,savings,budgets,planning}'"
+        },
+        "theme": {
+          "name": "theme",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "profiles_id_users_id_fk": {
+          "name": "profiles_id_users_id_fk",
+          "tableFrom": "profiles",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "profiles_select_own": {
+          "name": "profiles_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "id = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "profiles_insert_own": {
+          "name": "profiles_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "id = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "profiles_update_own": {
+          "name": "profiles_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ],
+          "using": "id = nullif(current_setting('app.user_id', true), '')::uuid",
+          "withCheck": "id = nullif(current_setting('app.user_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "profiles_display_name_length": {
+          "name": "profiles_display_name_length",
+          "value": "char_length(\"profiles\".\"display_name\") between 1 and 80"
+        },
+        "profiles_enabled_modules_valid": {
+          "name": "profiles_enabled_modules_valid",
+          "value": "cardinality(\"profiles\".\"enabled_modules\") >= 1 and \"profiles\".\"enabled_modules\" <@ '{finances,commission,debts,savings,budgets,planning}'::text[]"
+        },
+        "profiles_currency_format": {
+          "name": "profiles_currency_format",
+          "value": "\"profiles\".\"currency\" ~ '^[A-Z]{3}$'"
+        },
+        "profiles_week_starts_on_range": {
+          "name": "profiles_week_starts_on_range",
+          "value": "\"profiles\".\"week_starts_on\" between 1 and 7"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.user_access": {
+      "name": "user_access",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_access_user_id_users_id_fk": {
+          "name": "user_access_user_id_users_id_fk",
+          "tableFrom": "user_access",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "user_access_select_own": {
+          "name": "user_access_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "user_id = nullif(current_setting('app.user_id', true), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "user_access_role_valid": {
+          "name": "user_access_role_valid",
+          "value": "\"user_access\".\"role\" in ('user', 'admin')"
+        },
+        "user_access_status_valid": {
+          "name": "user_access_status_valid",
+          "value": "\"user_access\".\"status\" in ('active', 'suspended')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -8,6 +8,7 @@ import { apiError } from './lib/errors'
 import { withDb } from './middleware/db'
 import { requireSameOrigin } from './middleware/same-origin'
 import { adminRoutes } from './modules/admin/routes'
+import { commissionRoutes } from './modules/commission/routes'
 import { meRoutes } from './modules/profiles/routes'
 import { authRoutes } from './routes/auth'
 
@@ -42,6 +43,7 @@ app.get('/api/v1/health/db', withDb, async (c) => {
 app.route('/api/v1/auth', authRoutes)
 app.route('/api/v1/me', meRoutes)
 app.route('/api/v1/admin', adminRoutes)
+app.route('/api/v1/commission', commissionRoutes)
 
 app.notFound((c) => {
   if (c.req.path.startsWith('/api/')) return apiError(c, 404, 'not_found', 'Recurso no encontrado.')
