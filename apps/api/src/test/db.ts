@@ -24,7 +24,14 @@ export async function createTestDatabase() {
   const db = await PGlite.create()
   await db.exec(`
     create schema auth;
-    create table auth.users (id uuid primary key, email text);
+    create table auth.users (
+      id uuid primary key,
+      email text,
+      created_at timestamptz default now(),
+      email_confirmed_at timestamptz,
+      last_sign_in_at timestamptz,
+      deleted_at timestamptz
+    );
 
     create schema ${TEST_SCHEMA};
     create role ${TEST_ROLE} noinherit;

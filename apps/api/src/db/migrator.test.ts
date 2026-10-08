@@ -205,3 +205,50 @@ describe('user_access row-level security and privileges', () => {
     await expect(asUser(USER_B, () => db.query(statement))).rejects.toThrow(/permission denied/)
   })
 })
+
+describe('admin_list_users', () => {
+  const OTHER_ROLE = 'someone_else'
+
+  beforeEach(async () => {
+    await migrate(db, TEST_SCHEMA, loadMigrations())
+    await db.exec(`
+      insert into auth.users (id, email) values ('${USER_A}', 'a@example.com'), ('${USER_B}', 'b@example.com');
+      insert into ${TEST_SCHEMA}.user_access (user_id, role) values ('${USER_A}', 'admin');
+      create role ${OTHER_ROLE};
+      grant usage on schema ${TEST_SCHEMA} to ${OTHER_ROLE};
+      set role ${TEST_ROLE};
+      set search_path to ${TEST_SCHEMA};
+    `)
+  })
+
+  const listEmails = async () =>
+    (await db.query<{ email: string }>('select email from admin_list_users(null, 10, 0)')).rows.map(
+      ({ email }) => email,
+    )
+
+  it('lists every user to an active admin, past row-level security', async () => {
+    expect((await asUser(USER_A, listEmails)).sort()).toEqual(['a@example.com', 'b@example.com'])
+  })
+
+  it('refuses a regular user, a suspended admin and a request without a user', async () => {
+    await expect(asUser(USER_B, listEmails)).rejects.toThrow(/not an admin/)
+    await expect(listEmails()).rejects.toThrow(/not an admin/)
+
+    await db.exec(`reset role; update ${TEST_SCHEMA}.user_access set status = 'suspended'`)
+    await db.exec(`set role ${TEST_ROLE}`)
+    await expect(asUser(USER_A, listEmails)).rejects.toThrow(/not an admin/)
+  })
+
+  it('cannot be fooled by a temporary table named like its tables', async () => {
+    await db.exec(`reset role; grant temporary on database postgres to ${TEST_ROLE}`)
+    await db.exec(`set role ${TEST_ROLE}`)
+    await db.exec(`create temporary table user_access (user_id uuid, role text, status text)`)
+    await db.exec(`insert into pg_temp.user_access values ('${USER_B}', 'admin', 'active')`)
+    await expect(asUser(USER_B, listEmails)).rejects.toThrow(/not an admin/)
+  })
+
+  it('may only be called by the API role', async () => {
+    await db.exec(`reset role; set role ${OTHER_ROLE}`)
+    await expect(asUser(USER_A, listEmails)).rejects.toThrow(/permission denied/)
+  })
+})

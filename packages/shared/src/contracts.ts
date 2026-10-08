@@ -127,11 +127,45 @@ export const profileUpdateSchema = z
 export type ProfileUpdate = z.infer<typeof profileUpdateSchema>
 
 export type UserRole = 'user' | 'admin'
+export type AccountStatus = 'active' | 'suspended'
 
 export interface MeResponse {
   user: SessionUser
   role: UserRole
   profile: UserProfile
+}
+
+export const ADMIN_USERS_PAGE_SIZE = 50
+
+/** `GET /admin/users`: newest first, optionally filtered by email or name. */
+export const adminUserListQuerySchema = z.strictObject({
+  q: z.string().trim().max(100, { error: 'Usa como mucho 100 caracteres.' }).optional(),
+  offset: z.coerce.number().int().min(0).max(1_000_000).optional(),
+})
+export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>
+
+/** A user as the admin panel sees them: account metadata only, never financial data (plan §9.9). */
+export interface AdminUser {
+  id: string
+  email: string | null
+  role: UserRole
+  status: AccountStatus
+  /** ISO timestamps. */
+  createdAt: string | null
+  emailConfirmedAt: string | null
+  lastSignInAt: string | null
+  /** Null until the user opens the app in this environment (Auth users are shared with dev). */
+  profile: {
+    displayName: string | null
+    onboardedAt: string | null
+    enabledModules: ModuleId[]
+  } | null
+}
+
+export interface AdminUserListResponse {
+  users: AdminUser[]
+  /** Users matching the search, across all pages. */
+  total: number
 }
 
 export interface HealthResponse {

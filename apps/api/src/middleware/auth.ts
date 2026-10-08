@@ -15,3 +15,14 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   c.set('userEmail', user.email)
   return next()
 })
+
+/**
+ * Lets only admins through. Goes after withUserDb, which loads the role from user_access (never from
+ * anything the user can edit). The database functions behind admin routes check it again.
+ */
+export const requireAdmin = createMiddleware<AppEnv>(async (c, next) => {
+  if (c.var.userRole !== 'admin') {
+    return apiError(c, 403, 'forbidden', 'No tienes acceso a esta sección.')
+  }
+  return next()
+})
