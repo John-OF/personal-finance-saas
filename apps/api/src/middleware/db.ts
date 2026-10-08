@@ -6,6 +6,7 @@ import type { UserRole } from '../db/schema'
 import type { AppEnv } from '../env'
 import { apiError } from '../lib/errors'
 import { isUuid } from '../lib/ids'
+import { clearSessionCookies } from '../lib/session-cookie'
 
 async function connect(c: Context<AppEnv>): Promise<DbConnection | Response> {
   try {
@@ -43,16 +44,18 @@ export const withDb = createMiddleware<AppEnv>(async (c, next) => {
 /**
  * Like withDb, but the whole request runs in one transaction with `app.user_id` set to the session
  * user, which is what the row-level security policies filter by. The setting is local to the
- * transaction, so it cannot leak to another request through Hyperdrive's pool. Also loads the
- * user's role into `c.var.userRole` and turns suspended accounts away with 403, even while their
- * access token is still valid. Commits when the handler succeeds and rolls back when it throws.
- * Goes after requireAuth.
+ * transaction, so it cannot leak to another request through Hyperdrive's pool. Also turns away,
+ * even while their access token is still valid, sessions that were ended (401, see migration 0004)
+ * and suspended accounts (403), and loads the user's role into `c.var.userRole`. Commits when the
+ * handler succeeds and rolls back when it throws. Goes after requireAuth.
  */
 export const withUserDb = createMiddleware<AppEnv>(async (c, next) => {
-  const userId = c.var.userId
-  // Inlined rather than bound so the three statements travel in a single round trip (the simple
-  // query protocol takes no parameters). Safe because only a UUID can get here.
-  if (!isUuid(userId)) throw new Error('withUserDb needs requireAuth before it')
+  const { userId, sessionId } = c.var
+  // Inlined rather than bound so the statements travel in a single round trip (the simple query
+  // protocol takes no parameters). Safe because only UUIDs can get here.
+  if (!isUuid(userId) || !isUuid(sessionId)) {
+    throw new Error('withUserDb needs requireAuth before it')
+  }
 
   const connection = await connect(c)
   if (connection instanceof Response) return connection
@@ -60,10 +63,18 @@ export const withUserDb = createMiddleware<AppEnv>(async (c, next) => {
   try {
     const results = (await connection.client.query(
       `begin; select set_config('app.user_id', '${userId}', true); ` +
+        `select session_is_active('${sessionId}') as active; ` +
         `select role, status from user_access where user_id = '${userId}'`,
     )) as unknown as QueryResult[]
+    const [, , session, accessRows] = results
+    const active = (session?.rows[0] as { active: boolean } | undefined)?.active
+    if (active !== true) {
+      await connection.client.query('rollback')
+      clearSessionCookies(c)
+      return apiError(c, 401, 'session_ended', 'Tu sesión se cerró. Vuelve a iniciar sesión.')
+    }
     // No row means a regular, active user.
-    const access = results.at(-1)?.rows[0] as { role: UserRole; status: string } | undefined
+    const access = accessRows?.rows[0] as { role: UserRole; status: string } | undefined
     if (access?.status === 'suspended') {
       await connection.client.query('rollback')
       return apiError(c, 403, 'account_suspended', 'Tu cuenta está suspendida.')

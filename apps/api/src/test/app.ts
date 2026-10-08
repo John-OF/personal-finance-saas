@@ -28,13 +28,16 @@ export function createExecutionContext() {
 
 /**
  * Replacement for lib/session in `vi.mock`: the session user is whatever the test header says, so
- * route tests exercise everything after the token check (covered by lib/session.test.ts).
+ * route tests exercise everything after the token check (covered by lib/session.test.ts). Its
+ * session id is the user id, the session the test database opens for every user (test/db.ts).
  */
 export function mockSession() {
   return {
     authenticate: (c: Context) => {
       const id = c.req.header(TEST_USER_HEADER)
-      return Promise.resolve(id ? { id, email: `${id.slice(-1)}@example.com` } : null)
+      return Promise.resolve(
+        id ? { id, email: `${id.slice(-1)}@example.com`, sessionId: id } : null,
+      )
     },
   }
 }

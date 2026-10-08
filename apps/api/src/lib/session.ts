@@ -2,6 +2,7 @@ import { combineChunks, parseCookieHeader, stringFromBase64URL } from '@supabase
 import type { Context } from 'hono'
 import type { AppEnv } from '../env'
 import { isUuid } from './ids'
+import { sessionCookieName } from './session-cookie'
 import { createSupabase } from './supabase'
 
 // Verifying the session through supabase-js builds a whole client per request and costs 4–22 ms of
@@ -12,6 +13,8 @@ import { createSupabase } from './supabase'
 export interface AuthenticatedUser {
   id: string
   email: string | null
+  /** Supabase session the token belongs to; withUserDb checks it has not been ended. */
+  sessionId: string
 }
 
 interface AccessTokenClaims {
@@ -21,6 +24,7 @@ interface AccessTokenClaims {
   iss: string
   aud: string | string[]
   role: string
+  session_id: string
 }
 
 export type TokenCheck =
@@ -39,11 +43,6 @@ interface KeyCache {
   keys: Map<string, CryptoKey>
 }
 const keyCaches = new Map<string, KeyCache>()
-
-/** Name of the session cookie supabase-js uses for this project. */
-export function sessionCookieName(supabaseUrl: string) {
-  return `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`
-}
 
 /** The access token in the (possibly chunked, possibly base64-encoded) session cookie. */
 export async function readAccessToken(cookieHeader: string, cookieName: string) {
@@ -102,7 +101,7 @@ async function signingKey(supabaseUrl: string, kid: string) {
   return cache.keys.get(kid) ?? null
 }
 
-/** Checks signature, issuer, audience, role, subject and expiry of a Supabase access token. */
+/** Checks signature, issuer, audience, role, subject, session and expiry of a Supabase access token. */
 export async function checkAccessToken(token: string, supabaseUrl: string): Promise<TokenCheck> {
   const parts = token.split('.')
   const [rawHeader, rawPayload, rawSignature] = parts
@@ -134,6 +133,7 @@ export async function checkAccessToken(token: string, supabaseUrl: string): Prom
     audiences.includes('authenticated') &&
     claims.role === 'authenticated' &&
     isUuid(claims.sub) &&
+    isUuid(claims.session_id) &&
     typeof claims.exp === 'number'
   if (!trusted) return { status: 'invalid' }
   if (claims.exp <= Math.floor(Date.now() / 1000)) return { status: 'refresh' }
@@ -147,11 +147,18 @@ export async function authenticate(c: Context<AppEnv>): Promise<AuthenticatedUse
   if (!token) return null
 
   const check = await checkAccessToken(token, c.env.SUPABASE_URL)
-  if (check.status === 'valid') return { id: check.claims.sub, email: check.claims.email ?? null }
+  if (check.status === 'valid') {
+    const { sub, email, session_id } = check.claims
+    return { id: sub, email: email ?? null, sessionId: session_id }
+  }
   if (check.status === 'invalid') return null
 
   // Slow path, about once an hour per user: refreshes the session and rewrites the cookies.
   const { data, error } = await createSupabase(c).auth.getClaims()
-  if (error || !data || !isUuid(data.claims.sub)) return null
-  return { id: data.claims.sub, email: data.claims.email ?? null }
+  if (error || !data || !isUuid(data.claims.sub) || !isUuid(data.claims.session_id)) return null
+  return {
+    id: data.claims.sub,
+    email: data.claims.email ?? null,
+    sessionId: data.claims.session_id,
+  }
 }

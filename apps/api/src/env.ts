@@ -15,6 +15,7 @@ export interface Variables {
   /** Set by requireAuth from the verified JWT. */
   userId: string
   userEmail: string | null
+  sessionId: string
   /** Set by withUserDb from user_access. */
   userRole: UserRole
 }

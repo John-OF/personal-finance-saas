@@ -12,6 +12,16 @@ export class ApiError extends Error {
   }
 }
 
+let sessionLost: (() => void) | null = null
+
+/**
+ * Registers what to do when the API says there is no session: it expired, or it was ended from
+ * another device (signing out everywhere, changing the password). Set by SessionProvider.
+ */
+export function onSessionLost(handler: (() => void) | null) {
+  sessionLost = handler
+}
+
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
@@ -31,6 +41,7 @@ export async function api<T>(path: string, { method = 'GET', body }: ApiOptions 
   const data: unknown = await res.json().catch(() => null)
   if (!res.ok) {
     const error = (data as ApiErrorBody | null)?.error
+    if (error?.code === 'unauthenticated' || error?.code === 'session_ended') sessionLost?.()
     throw new ApiError(
       res.status,
       error?.code ?? 'unknown_error',

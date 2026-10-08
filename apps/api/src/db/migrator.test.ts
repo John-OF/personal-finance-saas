@@ -252,3 +252,36 @@ describe('admin_list_users', () => {
     await expect(asUser(USER_A, listEmails)).rejects.toThrow(/permission denied/)
   })
 })
+
+describe('session_is_active', () => {
+  beforeEach(async () => {
+    await migrate(db, TEST_SCHEMA, loadMigrations())
+    // The test database opens a session with the user's id for every user (test/db.ts).
+    await db.exec(`
+      insert into auth.users (id) values ('${USER_A}'), ('${USER_B}');
+      set role ${TEST_ROLE};
+      set search_path to ${TEST_SCHEMA};
+    `)
+  })
+
+  const isActive = async (sessionId: string) =>
+    (await db.query<{ active: boolean }>('select session_is_active($1) as active', [sessionId]))
+      .rows[0]?.active
+
+  it("answers for the caller's own sessions", async () => {
+    expect(await asUser(USER_A, () => isActive(USER_A))).toBe(true)
+  })
+
+  it('reports a session that was ended or reached its time limit', async () => {
+    await db.exec(`reset role; delete from auth.sessions where id = '${USER_A}'`)
+    await db.exec(`update auth.sessions set not_after = now() - interval '1 second'`)
+    await db.exec(`set role ${TEST_ROLE}`)
+    expect(await asUser(USER_A, () => isActive(USER_A))).toBe(false)
+    expect(await asUser(USER_B, () => isActive(USER_B))).toBe(false)
+  })
+
+  it("says nothing about another user's session, nor without a user", async () => {
+    expect(await asUser(USER_B, () => isActive(USER_A))).toBe(false)
+    expect(await isActive(USER_A)).toBe(false)
+  })
+})

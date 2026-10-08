@@ -2,12 +2,14 @@ import { stringToBase64URL } from '@supabase/ssr'
 import type { Context } from 'hono'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppEnv } from '../env'
-import { authenticate, checkAccessToken, readAccessToken, sessionCookieName } from './session'
+import { authenticate, checkAccessToken, readAccessToken } from './session'
+import { sessionCookieName } from './session-cookie'
 
 const { getClaims } = vi.hoisted(() => ({ getClaims: vi.fn() }))
 vi.mock('./supabase', () => ({ createSupabase: () => ({ auth: { getClaims } }) }))
 
 const USER_ID = '00000000-0000-4000-8000-00000000000a'
+const SESSION_ID = '00000000-0000-4000-8000-0000000005e5'
 const KID = 'test-key'
 
 let keys: CryptoKeyPair
@@ -57,6 +59,7 @@ function claims(overrides: Record<string, unknown> = {}) {
     iss: `${supabaseUrl}/auth/v1`,
     aud: 'authenticated',
     role: 'authenticated',
+    session_id: SESSION_ID,
     ...overrides,
   }
 }
@@ -125,6 +128,7 @@ describe('checkAccessToken', () => {
     ['another audience', { aud: 'anon' }],
     ['another role', { role: 'service_role' }],
     ['a subject that is not a UUID', { sub: 'admin' }],
+    ['no session id', { session_id: undefined }],
   ])('rejects %s', async (_case, overrides) => {
     expect(await checkAccessToken(await sign(claims(overrides)), supabaseUrl)).toEqual({
       status: 'invalid',
@@ -184,7 +188,7 @@ describe('readAccessToken', () => {
 describe('authenticate', () => {
   it('returns the user of a valid session without calling Supabase', async () => {
     const user = await authenticate(context(sessionCookie(await sign(claims()))))
-    expect(user).toEqual({ id: USER_ID, email: 'a@example.com' })
+    expect(user).toEqual({ id: USER_ID, email: 'a@example.com', sessionId: SESSION_ID })
     expect(getClaims).not.toHaveBeenCalled()
   })
 
@@ -201,13 +205,14 @@ describe('authenticate', () => {
 
   it('lets supabase-js refresh an expired session', async () => {
     getClaims.mockResolvedValue({
-      data: { claims: { sub: USER_ID, email: 'a@example.com' } },
+      data: { claims: { sub: USER_ID, email: 'a@example.com', session_id: SESSION_ID } },
       error: null,
     })
     const expired = await sign(claims({ exp: Math.floor(Date.now() / 1000) - 1 }))
     expect(await authenticate(context(sessionCookie(expired)))).toEqual({
       id: USER_ID,
       email: 'a@example.com',
+      sessionId: SESSION_ID,
     })
     expect(getClaims).toHaveBeenCalledTimes(1)
   })

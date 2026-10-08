@@ -32,6 +32,21 @@ export async function createTestDatabase() {
       last_sign_in_at timestamptz,
       deleted_at timestamptz
     );
+    create table auth.sessions (
+      id uuid primary key,
+      user_id uuid not null references auth.users (id) on delete cascade,
+      not_after timestamptz
+    );
+    -- Every test user starts signed in with one session whose id is the user id, which is the
+    -- session mockSession reports (test/app.ts). Deleting it signs the user out.
+    create function auth.open_test_session() returns trigger language plpgsql as $$
+    begin
+      insert into auth.sessions (id, user_id) values (new.id, new.id);
+      return new;
+    end
+    $$;
+    create trigger open_test_session after insert on auth.users
+      for each row execute function auth.open_test_session();
 
     create schema ${TEST_SCHEMA};
     create role ${TEST_ROLE} noinherit;

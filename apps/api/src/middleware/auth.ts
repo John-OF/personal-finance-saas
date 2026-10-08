@@ -4,8 +4,9 @@ import { apiError } from '../lib/errors'
 import { authenticate } from '../lib/session'
 
 /**
- * Requires a valid session and exposes its user in `c.var.userId` / `c.var.userEmail`. The user id
- * comes only from the verified access token, never from the request body.
+ * Requires a valid session and exposes its user in `c.var.userId` / `c.var.userEmail` /
+ * `c.var.sessionId`. They come only from the verified access token, never from the request body.
+ * Whether the session has since been ended is checked by withUserDb.
  */
 export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   const user = await authenticate(c)
@@ -13,6 +14,7 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
 
   c.set('userId', user.id)
   c.set('userEmail', user.email)
+  c.set('sessionId', user.sessionId)
   return next()
 })
 
