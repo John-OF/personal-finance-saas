@@ -48,6 +48,12 @@ const checks = [
   ['ring', 'background', NON_TEXT],
   ['ring', 'card', NON_TEXT],
   ['accent-foreground', 'accent', TEXT],
+  ['card', 'success', TEXT],
+  // Commission pay envelope: its figures are large and its bars are graphics, so 3:1 for the accent.
+  ['envelope-foreground', 'envelope', TEXT],
+  ['envelope-muted', 'envelope', TEXT],
+  ['envelope-accent', 'envelope', NON_TEXT],
+  ['envelope-accent-foreground', 'envelope-accent', TEXT],
 ]
 
 let failures = 0

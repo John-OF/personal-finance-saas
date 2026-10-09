@@ -45,7 +45,11 @@ function OnboardingGate() {
 /** Signed-in pages: header, tabs on wide screens and a bottom bar on phones. */
 export function AppLayout() {
   const { me } = useMe()
-  const navItems = NAV_ITEMS.filter(({ adminOnly }) => !adminOnly || me.role === 'admin')
+  const navItems = NAV_ITEMS.filter(
+    ({ adminOnly, module }) =>
+      (!adminOnly || me.role === 'admin') &&
+      (!module || me.profile.enabledModules.includes(module)),
+  )
 
   return (
     <div className="flex min-h-dvh flex-col">

@@ -25,6 +25,12 @@
   --ring: #1d6b4f;
   --app-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --app-font-heading: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  /* Commission pay envelope (features/commission). */
+  --envelope: #1d6b4f;
+  --envelope-foreground: #fbfcfa;
+  --envelope-muted: #d3e4dc;
+  --envelope-accent: #f2c46d;
+  --envelope-accent-foreground: #10201b;
 }
 
 [data-theme='libreta'][data-mode='dark'] {
@@ -43,6 +49,11 @@
   --destructive: #ee8a94;
   --success: #6fcaa1;
   --ring: #5fbf94;
+  --envelope: #1f5c45;
+  --envelope-foreground: #f3f7f4;
+  --envelope-muted: #c9dcd2;
+  --envelope-accent: #f0c46a;
+  --envelope-accent-foreground: #0f1714;
 }
 
 [data-theme='cobalto'] {
@@ -64,6 +75,12 @@
   --ring: #2b3bcf;
   --app-font-sans: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
   --app-font-heading: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  /* Commission pay envelope (features/commission). */
+  --envelope: #2b3bcf;
+  --envelope-foreground: #ffffff;
+  --envelope-muted: #ccd0f3;
+  --envelope-accent: #ffb529;
+  --envelope-accent-foreground: #171a3a;
 }
 
 [data-theme='cobalto'][data-mode='dark'] {
@@ -82,6 +99,11 @@
   --destructive: #ff8088;
   --success: #5ad6a0;
   --ring: #a9b2ff;
+  --envelope: #3242d4;
+  --envelope-foreground: #ffffff;
+  --envelope-muted: #ced2f5;
+  --envelope-accent: #ffbe3d;
+  --envelope-accent-foreground: #0e1130;
 }
 
 [data-theme='neutro'] {
@@ -102,6 +124,12 @@
   --ring: #1d4ed8;
   --app-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --app-font-heading: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Commission pay envelope (features/commission). */
+  --envelope: #1c1917;
+  --envelope-foreground: #fafaf9;
+  --envelope-muted: #d6d3d1;
+  --envelope-accent: #facc15;
+  --envelope-accent-foreground: #1c1917;
 }
 
 [data-theme='neutro'][data-mode='dark'] {
@@ -120,6 +148,11 @@
   --destructive: #f87171;
   --success: #4ade80;
   --ring: #93c5fd;
+  --envelope: #292524;
+  --envelope-foreground: #fafaf9;
+  --envelope-muted: #d6d3d1;
+  --envelope-accent: #facc15;
+  --envelope-accent-foreground: #0c0a09;
 }
 
 [data-theme='contraste'] {
@@ -140,6 +173,12 @@
   --ring: #0000c8;
   --app-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --app-font-heading: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Commission pay envelope (features/commission). */
+  --envelope: #000000;
+  --envelope-foreground: #ffffff;
+  --envelope-muted: #e6e6e6;
+  --envelope-accent: #ffd24d;
+  --envelope-accent-foreground: #000000;
 }
 
 [data-theme='contraste'][data-mode='dark'] {
@@ -158,6 +197,11 @@
   --destructive: #ff9c9c;
   --success: #7cfc7c;
   --ring: #9cd3ff;
+  --envelope: #ffffff;
+  --envelope-foreground: #000000;
+  --envelope-muted: #333333;
+  --envelope-accent: #6b4e00;
+  --envelope-accent-foreground: #ffffff;
 }
 
 [data-theme='malva'] {
@@ -179,6 +223,12 @@
   --ring: #7e3a5d;
   --app-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --app-font-heading: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  /* Commission pay envelope (features/commission). */
+  --envelope: #7e3a5d;
+  --envelope-foreground: #fffdfc;
+  --envelope-muted: #ecd5e0;
+  --envelope-accent: #f2b8a3;
+  --envelope-accent-foreground: #2a1b26;
 }
 
 [data-theme='malva'][data-mode='dark'] {
@@ -197,4 +247,9 @@
   --destructive: #ff8f86;
   --success: #82d2b6;
   --ring: #e7a6c6;
+  --envelope: #5c2a45;
+  --envelope-foreground: #f8eef3;
+  --envelope-muted: #e2c9d6;
+  --envelope-accent: #f0b9a4;
+  --envelope-accent-foreground: #1a1218;
 }

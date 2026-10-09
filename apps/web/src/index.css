@@ -19,6 +19,11 @@
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-ring: var(--ring);
+  --color-envelope: var(--envelope);
+  --color-envelope-foreground: var(--envelope-foreground);
+  --color-envelope-muted: var(--envelope-muted);
+  --color-envelope-accent: var(--envelope-accent);
+  --color-envelope-accent-foreground: var(--envelope-accent-foreground);
   --font-sans: var(--app-font-sans);
   --font-heading: var(--app-font-heading);
 }

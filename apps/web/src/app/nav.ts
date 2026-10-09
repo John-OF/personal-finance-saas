@@ -1,4 +1,5 @@
-import { House, Settings, ShieldCheck, type LucideIcon } from 'lucide-react'
+import type { ModuleId } from '@pf/shared'
+import { HandCoins, House, Settings, ShieldCheck, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   to: string
@@ -8,12 +9,14 @@ export interface NavItem {
   end?: boolean
   /** Only shown to admins. */
   adminOnly?: boolean
+  /** Only shown when the user enabled this module. */
+  module?: ModuleId
 }
 
-// Modules (movimientos, comisión, deudas…) join this list as they are built, filtered by the
-// modules the user enabled.
+// Modules join this list as they are built.
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Inicio', icon: House, end: true },
+  { to: '/commission', label: 'Comisión', icon: HandCoins, module: 'commission' },
   { to: '/admin', label: 'Administración', icon: ShieldCheck, adminOnly: true },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ]
