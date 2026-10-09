@@ -1,12 +1,12 @@
-import type { ProfileUpdate } from '@pf/shared'
+import { CATEGORY_KINDS, DEFAULT_CATEGORIES, type ProfileUpdate } from '@pf/shared'
 import { eq, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client'
-import { profiles } from '../../db/schema'
+import { categories, profiles } from '../../db/schema'
 
 /**
- * The user's profile, created with the defaults on first use. Profiles are created here rather than
- * by a trigger on auth.users because the same Auth users are shared by the `app` and `app_dev`
- * schemas.
+ * The user's profile, created with the defaults (and the default categories) on first use. Profiles
+ * are created here rather than by a trigger on auth.users because the same Auth users are shared by
+ * the `app` and `app_dev` schemas.
  */
 export async function findOrCreateProfile(db: Db, userId: string) {
   const [existing] = await db.select().from(profiles).where(eq(profiles.id, userId))
@@ -18,7 +18,16 @@ export async function findOrCreateProfile(db: Db, userId: string) {
     .values({ id: userId })
     .onConflictDoNothing()
     .returning()
-  if (created) return created
+  if (created) {
+    await db
+      .insert(categories)
+      .values(
+        CATEGORY_KINDS.flatMap((kind) =>
+          DEFAULT_CATEGORIES[kind].map((name) => ({ userId, kind, name })),
+        ),
+      )
+    return created
+  }
   const [raced] = await db.select().from(profiles).where(eq(profiles.id, userId))
   if (!raced) throw new Error('profile not found after insert')
   return raced

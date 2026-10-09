@@ -325,3 +325,56 @@ describe('commission tables: row-level security and composite foreign keys', () 
     await expect(asUser(USER_B, () => insert(USER_A))).rejects.toThrow(/row-level security/)
   })
 })
+
+describe('finance tables', () => {
+  it('give the profiles that already existed the default categories (0007)', async () => {
+    const all = loadMigrations()
+    const before = all.filter(({ name }) => name < '0007')
+    await migrate(db, TEST_SCHEMA, before)
+    await db.exec(`
+      insert into auth.users (id) values ('${USER_A}'), ('${USER_B}');
+      set search_path to ${TEST_SCHEMA};
+      insert into profiles (id) values ('${USER_A}'), ('${USER_B}');
+      insert into categories (user_id, kind, name) values ('${USER_A}', 'expense', 'comida');
+    `)
+    await migrate(db, TEST_SCHEMA, all)
+
+    const { rows } = await db.query<{ user_id: string; kind: string; n: number }>(
+      `select user_id, kind, count(*)::int as n from categories group by user_id, kind
+       order by user_id, kind`,
+    )
+    expect(rows).toEqual([
+      { user_id: USER_A, kind: 'expense', n: 8 },
+      { user_id: USER_A, kind: 'income', n: 4 },
+      { user_id: USER_B, kind: 'expense', n: 8 },
+      { user_id: USER_B, kind: 'income', n: 4 },
+    ])
+    // The category the user already had keeps its name.
+    const mine = await db.query(`select 1 from categories where name = 'comida'`)
+    expect(mine.rows).toHaveLength(1)
+  })
+
+  it("show nothing of another user's accounts, categories or transactions", async () => {
+    await migrate(db, TEST_SCHEMA, loadMigrations())
+    await db.exec(`
+      insert into auth.users (id) values ('${USER_A}'), ('${USER_B}');
+      set search_path to ${TEST_SCHEMA};
+      insert into profiles (id) values ('${USER_A}'), ('${USER_B}');
+      insert into categories (user_id, kind, name) values ('${USER_A}', 'expense', 'Comida');
+      insert into accounts (user_id, name, type) values ('${USER_A}', 'Efectivo', 'cash');
+      insert into transactions (user_id, kind, date, amount_cents, account_id, category_id)
+        select '${USER_A}', 'expense', '2026-10-08', 100, a.id, c.id from accounts a, categories c;
+      set role ${TEST_ROLE};
+    `)
+    const counts = await asUser(USER_B, async () => {
+      const count = async (table: string) => (await db.query(`select 1 from ${table}`)).rows.length
+      return [await count('accounts'), await count('categories'), await count('transactions')]
+    })
+    expect(counts).toEqual([0, 0, 0])
+    const own = await asUser(
+      USER_A,
+      async () => (await db.query('select 1 from transactions')).rows,
+    )
+    expect(own).toHaveLength(1)
+  })
+})

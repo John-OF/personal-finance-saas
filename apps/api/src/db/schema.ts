@@ -1,15 +1,22 @@
 import {
+  ACCOUNT_NAME_MAX_LENGTH,
+  ACCOUNT_TYPES,
+  CATEGORY_KINDS,
+  CATEGORY_NAME_MAX_LENGTH,
   COMMISSION_NOTE_MAX_LENGTH,
   COMMISSION_PLAN_NAME_MAX_LENGTH,
   FULL_PERCENT_BP,
   MAX_AMOUNT_CENTS,
   MODULE_IDS,
+  TRANSACTION_KINDS,
+  TRANSACTION_NOTE_MAX_LENGTH,
   type ModuleId,
   type ThemePreference,
 } from '@pf/shared'
 import { sql, type SQL } from 'drizzle-orm'
 import {
   bigint,
+  boolean,
   check,
   date,
   foreignKey,
@@ -22,6 +29,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { authUsers } from 'drizzle-orm/supabase'
@@ -255,5 +263,130 @@ export const commissionPayouts = pgTable(
     check('commission_payouts_expected_cents_range', sql`${t.expectedCents} >= 0`),
     check('commission_payouts_paid_cents_range', amountCheck(sql`${t.paidCents}`, 0)),
     ...ownRowPolicies('commission_payouts', sql`${t.userId}`),
+  ],
+)
+
+/** `'a', 'b'` for a CHECK against a list of constants from @pf/shared. */
+const sqlList = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(', '))
+const nameLengthCheck = (column: SQL, max: number) =>
+  sql`char_length(${column}) between 1 and ${sql.raw(String(max))}`
+
+/**
+ * Where the money is (plan §3.2). The balance is not stored: it is the initial balance plus the
+ * account's transactions. Accounts with transactions cannot be deleted, only archived.
+ */
+export const accounts = pgTable(
+  'accounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    type: text('type', { enum: ACCOUNT_TYPES }).notNull(),
+    // Negative for a card or an account that starts in debt.
+    initialBalanceCents: bigint('initial_balance_cents', { mode: 'number' }).notNull().default(0),
+    includeInNetWorth: boolean('include_in_net_worth').notNull().default(true),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique('accounts_user_id_id_unique').on(t.userId, t.id),
+    check('accounts_name_length', nameLengthCheck(sql`${t.name}`, ACCOUNT_NAME_MAX_LENGTH)),
+    check('accounts_type_valid', sql`${t.type} in (${sqlList(ACCOUNT_TYPES)})`),
+    check(
+      'accounts_initial_balance_cents_range',
+      sql`${t.initialBalanceCents} between ${sql.raw(String(-MAX_AMOUNT_CENTS))} and ${sql.raw(String(MAX_AMOUNT_CENTS))}`,
+    ),
+    ...ownRowPolicies('accounts', sql`${t.userId}`),
+  ],
+)
+
+/** Income and expense categories, unique by name (ignoring case) within each kind. */
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: CATEGORY_KINDS }).notNull(),
+    name: text('name').notNull(),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    // Target of the transactions' foreign key, which also makes the category's kind match theirs.
+    unique('categories_user_id_id_kind_unique').on(t.userId, t.id, t.kind),
+    uniqueIndex('categories_user_id_kind_name_unique').on(t.userId, t.kind, sql`lower(${t.name})`),
+    check('categories_name_length', nameLengthCheck(sql`${t.name}`, CATEGORY_NAME_MAX_LENGTH)),
+    check('categories_kind_valid', sql`${t.kind} in (${sqlList(CATEGORY_KINDS)})`),
+    ...ownRowPolicies('categories', sql`${t.userId}`),
+  ],
+)
+
+/**
+ * Money that came in, went out or moved between accounts (plan §6.2). The amount is always
+ * positive; the kind gives the sign. Deleting sets `deleted_at`, so "Deshacer" can bring it back.
+ */
+export const transactions = pgTable(
+  'transactions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // Deleting the profile deletes the transactions in the same statement as their accounts and
+    // categories, so the foreign keys below (no action) do not stop it.
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: TRANSACTION_KINDS }).notNull(),
+    date: date('date', { mode: 'string' }).notNull(),
+    amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+    accountId: uuid('account_id').notNull(),
+    toAccountId: uuid('to_account_id'),
+    categoryId: uuid('category_id'),
+    note: text('note').notNull().default(''),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    foreignKey({
+      name: 'transactions_account_fk',
+      columns: [t.userId, t.accountId],
+      foreignColumns: [accounts.userId, accounts.id],
+    }),
+    foreignKey({
+      name: 'transactions_to_account_fk',
+      columns: [t.userId, t.toAccountId],
+      foreignColumns: [accounts.userId, accounts.id],
+    }),
+    // Includes the kind: an expense can only use an expense category, and income an income one.
+    foreignKey({
+      name: 'transactions_category_fk',
+      columns: [t.userId, t.categoryId, t.kind],
+      foreignColumns: [categories.userId, categories.id, categories.kind],
+    }),
+    index('transactions_user_id_date_idx').on(t.userId, t.date.desc(), t.createdAt.desc()),
+    index('transactions_user_id_account_id_date_idx').on(t.userId, t.accountId, t.date),
+    index('transactions_user_id_to_account_id_idx')
+      .on(t.userId, t.toAccountId)
+      .where(sql`${t.toAccountId} is not null`),
+    index('transactions_user_id_category_id_date_idx').on(t.userId, t.categoryId, t.date),
+    check('transactions_kind_valid', sql`${t.kind} in (${sqlList(TRANSACTION_KINDS)})`),
+    check('transactions_amount_cents_range', amountCheck(sql`${t.amountCents}`, 1)),
+    check(
+      'transactions_note_length',
+      sql`char_length(${t.note}) <= ${sql.raw(String(TRANSACTION_NOTE_MAX_LENGTH))}`,
+    ),
+    // A transfer goes to another account and has no category; income and expenses are the opposite.
+    check(
+      'transactions_kind_fields',
+      sql`case when ${t.kind} = 'transfer'
+        then ${t.toAccountId} is not null and ${t.toAccountId} <> ${t.accountId} and ${t.categoryId} is null
+        else ${t.toAccountId} is null and ${t.categoryId} is not null end`,
+    ),
+    ...ownRowPolicies('transactions', sql`${t.userId}`),
   ],
 )

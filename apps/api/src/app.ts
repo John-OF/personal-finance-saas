@@ -7,9 +7,13 @@ import type { AppEnv } from './env'
 import { apiError } from './lib/errors'
 import { withDb } from './middleware/db'
 import { requireSameOrigin } from './middleware/same-origin'
+import { accountRoutes } from './modules/accounts/routes'
 import { adminRoutes } from './modules/admin/routes'
+import { categoryRoutes } from './modules/categories/routes'
 import { commissionRoutes } from './modules/commission/routes'
 import { meRoutes } from './modules/profiles/routes'
+import { reportRoutes } from './modules/reports/routes'
+import { transactionRoutes } from './modules/transactions/routes'
 import { authRoutes } from './routes/auth'
 
 export const app = new Hono<AppEnv>()
@@ -44,6 +48,10 @@ app.route('/api/v1/auth', authRoutes)
 app.route('/api/v1/me', meRoutes)
 app.route('/api/v1/admin', adminRoutes)
 app.route('/api/v1/commission', commissionRoutes)
+app.route('/api/v1/accounts', accountRoutes)
+app.route('/api/v1/categories', categoryRoutes)
+app.route('/api/v1/transactions', transactionRoutes)
+app.route('/api/v1/reports', reportRoutes)
 
 app.notFound((c) => {
   if (c.req.path.startsWith('/api/')) return apiError(c, 404, 'not_found', 'Recurso no encontrado.')
