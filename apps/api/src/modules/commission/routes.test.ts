@@ -1,4 +1,6 @@
 import type {
+  Account,
+  CategoriesResponse,
   CommissionBulkPayoutResponse,
   CommissionEntriesResponse,
   CommissionEntry,
@@ -7,10 +9,12 @@ import type {
   CommissionPlan,
   CommissionPlansResponse,
   CommissionWeeksResponse,
+  TransactionsResponse,
 } from '@pf/shared'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { app } from '../../app'
 import { createExecutionContext, createTestEnv, TEST_USER_HEADER } from '../../test/app'
+import { apiClient } from '../../test/client'
 import { startApiDatabase } from '../../test/db'
 
 vi.mock('../../lib/session', async () => (await import('../../test/app')).mockSession())
@@ -394,5 +398,180 @@ describe('isolation between users', () => {
   it('answers 404 to ids that are not UUIDs', async () => {
     expect((await call('GET', '/plans/1/weeks', USER_A)).status).toBe(404)
     expect((await call('DELETE', '/entries/abc', USER_A)).status).toBe(404)
+  })
+})
+
+describe('payouts recorded as income', () => {
+  /** A plan whose payouts go to a new account, with one week of entries paid on 2026-10-10. */
+  async function linkedPlan() {
+    const finance = apiClient(database.connectionString)
+    const account = await finance.json<Account>('POST', '/accounts', USER_A, {
+      name: `Banco ${crypto.randomUUID().slice(0, 6)}`,
+      type: 'bank',
+      initialBalanceCents: 0,
+    })
+    const { categories } = await finance.json<CategoriesResponse>('GET', '/categories', USER_A)
+    const category = categories.find((c) => c.kind === 'income' && c.name === 'Comisiones')
+    const plan = await newPlan()
+    await addEntry(plan.id, '2026-10-06', 6000)
+    const linked = await json<CommissionPlan>('PATCH', `/plans/${plan.id}`, USER_A, {
+      accountId: account.id,
+      categoryId: category?.id,
+    })
+    expect(linked).toMatchObject({ accountId: account.id, categoryId: category?.id })
+    const incomeOf = async () =>
+      (
+        await finance.json<TransactionsResponse>(
+          'GET',
+          `/transactions?accountId=${account.id}`,
+          USER_A,
+        )
+      ).transactions
+    return { finance, account, category, plan: linked, incomeOf }
+  }
+
+  it('records the payout in the plan account, and follows what was paid', async () => {
+    const { finance, account, category, plan, incomeOf } = await linkedPlan()
+    // Paid before Saturday's payday: the money came in today (2026-10-08).
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-10`, USER_A, { paidCents: 3000 })
+    const [income, ...others] = await incomeOf()
+    expect(others).toEqual([])
+    expect(income).toMatchObject({
+      kind: 'income',
+      date: '2026-10-08',
+      amountCents: 3000,
+      accountId: account.id,
+      toAccountId: null,
+      categoryId: category?.id,
+      note: 'Mis ingresos',
+    })
+
+    // Confirming again with another amount changes the same income.
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-10`, USER_A, { paidCents: 3500 })
+    expect((await incomeOf()).map(({ id, amountCents }) => [id, amountCents])).toEqual([
+      [income?.id, 3500],
+    ])
+    const { accounts } = await finance.json<{ accounts: Account[] }>('GET', '/accounts', USER_A)
+    expect(accounts.find(({ id }) => id === account.id)?.balanceCents).toBe(3500)
+
+    // Nothing paid, no income; and undoing the payout takes it away too.
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-10`, USER_A, { paidCents: 0 })
+    expect(await incomeOf()).toEqual([])
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-10`, USER_A, { paidCents: 2000 })
+    expect(await incomeOf()).toHaveLength(1)
+    expect((await call('DELETE', `/plans/${plan.id}/payouts/2026-10-10`, USER_A)).status).toBe(204)
+    expect(await incomeOf()).toEqual([])
+  })
+
+  it('dates a payout confirmed late on its payday', async () => {
+    const { plan, incomeOf } = await linkedPlan()
+    await addEntry(plan.id, '2026-09-29', 2000)
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-03`, USER_A, { paidCents: 1000 })
+    expect((await incomeOf()).map(({ date }) => date)).toEqual(['2026-10-03'])
+  })
+
+  it('does not record the weeks marked in bulk', async () => {
+    const { plan, incomeOf } = await linkedPlan()
+    const bulk = await json<CommissionBulkPayoutResponse>(
+      'POST',
+      `/plans/${plan.id}/payouts/bulk`,
+      USER_A,
+      { through: '2026-10-10' },
+    )
+    expect(bulk.confirmed).toBe(1)
+    expect(await incomeOf()).toEqual([])
+  })
+
+  it('stops recording when the plan is unlinked, keeping what it already recorded', async () => {
+    const { plan, incomeOf } = await linkedPlan()
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-10`, USER_A, { paidCents: 3000 })
+    const unlinked = await json<CommissionPlan>('PATCH', `/plans/${plan.id}`, USER_A, {
+      accountId: null,
+      categoryId: null,
+    })
+    expect(unlinked).toMatchObject({ accountId: null, categoryId: null })
+    await addEntry(plan.id, '2026-10-13', 1000)
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-17`, USER_A, { paidCents: 500 })
+    expect((await incomeOf()).map(({ amountCents }) => amountCents)).toEqual([3000])
+  })
+
+  it('goes away with its user, payouts and income included', async () => {
+    const leaving = '00000000-0000-4000-8000-00000000000c'
+    await database.asAdmin((db) => db.exec(`insert into auth.users (id) values ('${leaving}')`))
+    const finance = apiClient(database.connectionString)
+    const account = await finance.json<Account>('POST', '/accounts', leaving, {
+      name: 'Banco',
+      type: 'bank',
+      initialBalanceCents: 0,
+    })
+    const { categories } = await finance.json<CategoriesResponse>('GET', '/categories', leaving)
+    const plan = await newPlan(leaving)
+    await json('PATCH', `/plans/${plan.id}`, leaving, {
+      accountId: account.id,
+      categoryId: categories.find((c) => c.kind === 'income')?.id,
+    })
+    await json('POST', `/plans/${plan.id}/entries`, leaving, {
+      date: '2026-10-06',
+      amountCents: 100,
+    })
+    await json('PUT', `/plans/${plan.id}/payouts/2026-10-10`, leaving, { paidCents: 50 })
+
+    const left = await database.asAdmin(async (db) => {
+      await db.query('delete from auth.users where id = $1', [leaving])
+      const { rows } = await db.query<{ n: number }>(
+        `select (select count(*) from transactions where user_id = $1)
+              + (select count(*) from commission_plans where user_id = $1)
+              + (select count(*) from accounts where user_id = $1) as n`,
+        [leaving],
+      )
+      return Number(rows[0]?.n)
+    })
+    expect(left).toBe(0)
+  })
+
+  it("keeps the plan's account and category from being deleted", async () => {
+    const { finance, account, category } = await linkedPlan()
+    expect((await finance.call('DELETE', `/accounts/${account.id}`, USER_A)).status).toBe(409)
+    expect((await finance.call('DELETE', `/categories/${category?.id}`, USER_A)).status).toBe(409)
+  })
+
+  it("rejects another user's account, an expense category, or only one of the two", async () => {
+    const finance = apiClient(database.connectionString)
+    const plan = await newPlan()
+    const theirs = await finance.json<Account>('POST', '/accounts', USER_B, {
+      name: 'De B',
+      type: 'cash',
+      initialBalanceCents: 0,
+    })
+    const mine = await finance.json<Account>('POST', '/accounts', USER_A, {
+      name: 'Mía',
+      type: 'cash',
+      initialBalanceCents: 0,
+    })
+    const { categories } = await finance.json<CategoriesResponse>('GET', '/categories', USER_A)
+    const income = categories.find((c) => c.kind === 'income')?.id
+    const expense = categories.find((c) => c.kind === 'expense')?.id
+
+    const foreign = await call('PATCH', `/plans/${plan.id}`, USER_A, {
+      accountId: theirs.id,
+      categoryId: income,
+    })
+    expect(await foreign.json()).toMatchObject({
+      error: { fields: { accountId: ['Elige una de tus cuentas.'] } },
+    })
+    const wrongKind = await call('PATCH', `/plans/${plan.id}`, USER_A, {
+      accountId: mine.id,
+      categoryId: expense,
+    })
+    expect(await wrongKind.json()).toMatchObject({
+      error: { fields: { categoryId: ['Elige una de tus categorías de ingreso.'] } },
+    })
+    for (const body of [{ accountId: mine.id }, { accountId: mine.id, categoryId: null }]) {
+      expect((await call('PATCH', `/plans/${plan.id}`, USER_A, body)).status).toBe(400)
+    }
+    const [current] = (await json<CommissionPlansResponse>('GET', '/plans', USER_A)).plans.filter(
+      ({ id }) => id === plan.id,
+    )
+    expect(current).toMatchObject({ accountId: null, categoryId: null })
   })
 })

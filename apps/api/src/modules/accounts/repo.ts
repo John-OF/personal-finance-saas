@@ -1,7 +1,7 @@
 import { BALANCE_SIGN, type Account, type AccountInput, type AccountUpdate } from '@pf/shared'
 import { and, asc, eq, notExists, or, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client'
-import { accounts, transactions } from '../../db/schema'
+import { accounts, commissionPlans, transactions } from '../../db/schema'
 import { findOrCreateProfile } from '../profiles/repo'
 
 // Every query filters by the session user besides row-level security (plan §9.3).
@@ -95,8 +95,8 @@ export async function updateAccount(
 }
 
 /**
- * Deletes an account without transactions (deleted ones count too: "Deshacer" may bring them back).
- * One with transactions can only be archived.
+ * Deletes an account without transactions (deleted ones count too: "Deshacer" may bring them back)
+ * that no commission plan records its payouts in. One in use can only be archived.
  */
 export async function deleteAccount(db: Db, userId: string, accountId: string) {
   const deleted = await db
@@ -117,6 +117,14 @@ export async function deleteAccount(db: Db, userId: string, accountId: string) {
                   eq(transactions.toAccountId, accounts.id),
                 ),
               ),
+            ),
+        ),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(commissionPlans)
+            .where(
+              and(eq(commissionPlans.userId, userId), eq(commissionPlans.accountId, accounts.id)),
             ),
         ),
       ),

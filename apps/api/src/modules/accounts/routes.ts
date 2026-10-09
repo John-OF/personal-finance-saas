@@ -42,7 +42,7 @@ export const accountRoutes = new Hono<AppEnv>()
         c,
         409,
         'in_use',
-        'Esta cuenta tiene movimientos. Archívala para dejar de verla.',
+        'Esta cuenta tiene movimientos o recibe los cobros de comisión. Archívala para dejar de verla.',
       )
     }
     return result === 'deleted' ? c.body(null, 204) : accountNotFound(c)

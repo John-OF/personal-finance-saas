@@ -32,6 +32,7 @@ import {
   deleteRate,
   findPlan,
   importEntries,
+  incomeTargetErrors,
   listEntries,
   listPlans,
   listWeeks,
@@ -72,9 +73,18 @@ export const commissionRoutes = new Hono<AppEnv>()
   })
   .patch('/plans/:planId', validate('json', commissionPlanUpdateSchema), async (c) => {
     const planId = c.req.param('planId')
-    const plan = isUuid(planId)
-      ? await updatePlan(c.var.db, c.var.userId, planId, c.req.valid('json'))
-      : null
+    if (!isUuid(planId)) return planNotFound(c)
+    const update = c.req.valid('json')
+    if (update.accountId && update.categoryId) {
+      const errors = await incomeTargetErrors(
+        c.var.db,
+        c.var.userId,
+        update.accountId,
+        update.categoryId,
+      )
+      if (errors) return apiError(c, 400, 'validation_error', 'Revisa los datos enviados.', errors)
+    }
+    const plan = await updatePlan(c.var.db, c.var.userId, planId, update)
     return plan ? c.json(plan) : planNotFound(c)
   })
   .put('/plans/:planId/rates', validate('json', commissionRateInputSchema), async (c) => {

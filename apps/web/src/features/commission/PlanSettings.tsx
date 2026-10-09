@@ -13,15 +13,19 @@ import {
   type CommissionPlan,
 } from '@pf/shared'
 import { ArrowLeft } from 'lucide-react'
-import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { useMe } from '../../app/me-context'
 import { FormAlert, SubmitButton, TextField } from '../../components/ui/form'
+import { LoadError } from '../../components/ui/load-error'
 import { useToast } from '../../components/ui/toast-context'
 import { downloadText, fileSlug } from '../../lib/download'
+import { dayName, shortDate } from '../../lib/labels'
+import { useLoad } from '../../lib/use-load'
 import { describeFailure, type FieldErrors } from '../auth/submit'
+import { financeApi } from '../finances/api'
 import { commissionApi } from './api'
 import { useCommission } from './commission-context'
-import { dayName, shortDate } from '../../lib/labels'
 import { PlanForm } from './PlanForm'
 import { choiceOf, scheduleOf, type ScheduleChoice } from './schedule'
 import { ScheduleFields } from './ScheduleFields'
@@ -94,6 +98,132 @@ function PlanSection() {
           Guardar
         </SubmitButton>
       </form>
+    </Section>
+  )
+}
+
+/**
+ * Where a confirmed payout is recorded as income (plan §7.4), with the finances module on. The
+ * weeks marked in bulk are not recorded: that money is already in the accounts' balances.
+ */
+function IncomeSection() {
+  const { plan, reloadPlans } = useCommission()
+  const toast = useToast()
+  const load = useCallback(async () => {
+    const [{ accounts }, { categories }] = await Promise.all([
+      financeApi.accounts(),
+      financeApi.categories(),
+    ])
+    return { accounts, categories }
+  }, [])
+  const { data, error, reload } = useLoad(load)
+  const [accountId, setAccountId] = useState(plan.accountId ?? '')
+  const [categoryId, setCategoryId] = useState(plan.categoryId ?? '')
+  const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  if (error) {
+    return (
+      <Section title="Anotar el cobro como ingreso">
+        <LoadError message={error} onRetry={reload} />
+      </Section>
+    )
+  }
+  if (!data) return null
+
+  const accounts = data.accounts.filter((a) => !a.archived || a.id === plan.accountId)
+  const categories = data.categories.filter(
+    (c) => c.kind === 'income' && (!c.archived || c.id === plan.categoryId),
+  )
+  const unchanged = accountId === (plan.accountId ?? '') && categoryId === (plan.categoryId ?? '')
+
+  function chooseAccount(id: string) {
+    setAccountId(id)
+    setFormError(null)
+    // The commission category is the natural one; any other can be picked.
+    if (id && !categoryId) {
+      const preferred = categories.find(({ name }) => name === 'Comisiones') ?? categories[0]
+      setCategoryId(preferred?.id ?? '')
+    }
+  }
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (accountId && !categoryId) {
+      setFormError('Elige una categoría de ingreso.')
+      return
+    }
+    setBusy(true)
+    setFormError(null)
+    try {
+      await commissionApi.updatePlan(plan.id, {
+        accountId: accountId || null,
+        categoryId: accountId ? categoryId : null,
+      })
+      reloadPlans()
+      toast(accountId ? 'Los cobros se anotarán como ingreso' : 'Los cobros ya no se anotarán')
+    } catch (err) {
+      setFormError(describeFailure(err).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title="Anotar el cobro como ingreso">
+      <p className="text-sm text-muted-foreground">
+        Al marcar una semana como cobrada, lo que te pagaron se anota como ingreso en esta cuenta,
+        el día de pago. Si lo corriges o lo deshaces, el ingreso cambia con él. Las semanas marcadas
+        en bloque no se anotan.
+      </p>
+      {accounts.length === 0 ? (
+        <p className="text-sm">
+          Primero crea una cuenta en{' '}
+          <Link to="/accounts" className="font-semibold text-link underline">
+            Cuentas
+          </Link>
+          .
+        </p>
+      ) : (
+        <form noValidate onSubmit={(e) => void save(e)} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1 text-sm">
+            Cuenta
+            <select
+              value={accountId}
+              onChange={(e) => chooseAccount(e.target.value)}
+              className="rounded border border-input bg-card px-3 py-2 text-base"
+            >
+              <option value="">No anotarlo</option>
+              {accounts.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {accountId && (
+            <label className="flex flex-col gap-1 text-sm">
+              Categoría
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="rounded border border-input bg-card px-3 py-2 text-base"
+              >
+                <option value="">Elige una</option>
+                {categories.map(({ id, name }) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {formError && <FormAlert>{formError}</FormAlert>}
+          <SubmitButton busy={busy} busyLabel="Guardando…" disabled={unchanged}>
+            Guardar
+          </SubmitButton>
+        </form>
+      )}
     </Section>
   )
 }
@@ -486,9 +616,10 @@ function NewPlanSection() {
   )
 }
 
-/** /commission/settings: the plan's name, pay week and percentage, and its data. */
+/** /commission/settings: the plan's name, pay week and percentage, its income account and data. */
 export function PlanSettings() {
   const { plan } = useCommission()
+  const { enabledModules } = useMe().me.profile
   return (
     <div key={plan.id} className="flex flex-col gap-6">
       <Link
@@ -500,6 +631,7 @@ export function PlanSettings() {
       </Link>
       <PlanSection />
       <PercentSection />
+      {enabledModules.includes('finances') && <IncomeSection />}
       <DataSection />
       <UnconfirmedSection />
       <NewPlanSection />

@@ -1,7 +1,7 @@
 import type { Category, CategoryInput, CategoryUpdate } from '@pf/shared'
 import { and, eq, ne, notExists, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client'
-import { categories, transactions } from '../../db/schema'
+import { categories, commissionPlans, transactions } from '../../db/schema'
 import { findOrCreateProfile } from '../profiles/repo'
 
 // Every query filters by the session user besides row-level security (plan §9.3).
@@ -104,7 +104,7 @@ export async function updateCategory(
 
 /**
  * Deletes a category without transactions (deleted ones count too: "Deshacer" may bring them
- * back). One with transactions can only be archived.
+ * back) that no commission plan records its payouts in. One in use can only be archived.
  */
 export async function deleteCategory(db: Db, userId: string, categoryId: string) {
   const deleted = await db
@@ -119,6 +119,17 @@ export async function deleteCategory(db: Db, userId: string, categoryId: string)
             .from(transactions)
             .where(
               and(eq(transactions.userId, userId), eq(transactions.categoryId, categories.id)),
+            ),
+        ),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(commissionPlans)
+            .where(
+              and(
+                eq(commissionPlans.userId, userId),
+                eq(commissionPlans.categoryId, categories.id),
+              ),
             ),
         ),
       ),

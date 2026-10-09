@@ -57,6 +57,13 @@
       "when": 1791515055352,
       "tag": "0007_seed_default_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791523700725,
+      "tag": "0008_link_commission_income",
+      "breakpoints": true
     }
   ]
 }

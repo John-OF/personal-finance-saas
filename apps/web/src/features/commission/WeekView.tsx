@@ -154,7 +154,8 @@ export function WeekView() {
     try {
       await commissionApi.confirmPayout(plan.id, target, paidCents)
       reloadWeeks()
-      toast(`Marcado como cobrado: ${money(paidCents)}`)
+      const recorded = plan.accountId && paidCents > 0 ? ' · anotado como ingreso' : ''
+      toast(`Marcado como cobrado: ${money(paidCents)}${recorded}`)
       return true
     } catch (err) {
       toast(describeFailure(err).message)

@@ -51,7 +51,7 @@ export const categoryRoutes = new Hono<AppEnv>()
         c,
         409,
         'in_use',
-        'Esta categoría tiene movimientos. Archívala para dejar de verla.',
+        'Esta categoría tiene movimientos o la usa un plan de comisión. Archívala para dejar de verla.',
       )
     }
     return result === 'deleted' ? c.body(null, 204) : categoryNotFound(c)

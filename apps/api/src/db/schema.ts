@@ -164,12 +164,29 @@ export const commissionPlans = pgTable(
     name: text('name').notNull(),
     periodEndWeekday: smallint('period_end_weekday').notNull(),
     paydayOffsetDays: smallint('payday_offset_days').notNull(),
+    // Where a confirmed payout is recorded as income (plan §7.4); both or neither.
+    accountId: uuid('account_id'),
+    categoryId: uuid('category_id'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     // Target of the composite foreign keys below: rows can only point at plans of their own user.
     unique('commission_plans_user_id_id_unique').on(t.userId, t.id),
+    foreignKey({
+      name: 'commission_plans_account_fk',
+      columns: [t.userId, t.accountId],
+      foreignColumns: [accounts.userId, accounts.id],
+    }),
+    foreignKey({
+      name: 'commission_plans_category_fk',
+      columns: [t.userId, t.categoryId],
+      foreignColumns: [categories.userId, categories.id],
+    }),
+    check(
+      'commission_plans_income_target',
+      sql`(${t.accountId} is null) = (${t.categoryId} is null)`,
+    ),
     check(
       'commission_plans_name_length',
       sql`char_length(${t.name}) between 1 and ${sql.raw(String(COMMISSION_PLAN_NAME_MAX_LENGTH))}`,
@@ -258,6 +275,7 @@ export const commissionPayouts = pgTable(
       foreignColumns: [commissionPlans.userId, commissionPlans.id],
     }).onDelete('cascade'),
     unique('commission_payouts_plan_id_payday_unique').on(t.planId, t.payday),
+    unique('commission_payouts_user_id_id_unique').on(t.userId, t.id),
     check('commission_payouts_percent_bp_range', percentBpCheck(sql`${t.percentBp}`)),
     check('commission_payouts_gross_cents_range', sql`${t.grossCents} >= 0`),
     check('commission_payouts_expected_cents_range', sql`${t.expectedCents} >= 0`),
@@ -320,6 +338,7 @@ export const categories = pgTable(
   (t) => [
     // Target of the transactions' foreign key, which also makes the category's kind match theirs.
     unique('categories_user_id_id_kind_unique').on(t.userId, t.id, t.kind),
+    unique('categories_user_id_id_unique').on(t.userId, t.id),
     uniqueIndex('categories_user_id_kind_name_unique').on(t.userId, t.kind, sql`lower(${t.name})`),
     check('categories_name_length', nameLengthCheck(sql`${t.name}`, CATEGORY_NAME_MAX_LENGTH)),
     check('categories_kind_valid', sql`${t.kind} in (${sqlList(CATEGORY_KINDS)})`),
@@ -347,11 +366,23 @@ export const transactions = pgTable(
     toAccountId: uuid('to_account_id'),
     categoryId: uuid('category_id'),
     note: text('note').notNull().default(''),
+    // The income a confirmed commission payout recorded; undoing the payout deletes it.
+    commissionPayoutId: uuid('commission_payout_id'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (t) => [
+    foreignKey({
+      name: 'transactions_commission_payout_fk',
+      columns: [t.userId, t.commissionPayoutId],
+      foreignColumns: [commissionPayouts.userId, commissionPayouts.id],
+    }).onDelete('cascade'),
+    uniqueIndex('transactions_commission_payout_id_unique').on(t.commissionPayoutId),
+    check(
+      'transactions_commission_payout_income',
+      sql`${t.commissionPayoutId} is null or ${t.kind} = 'income'`,
+    ),
     foreignKey({
       name: 'transactions_account_fk',
       columns: [t.userId, t.accountId],

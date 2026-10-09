@@ -41,14 +41,26 @@ export const commissionPlanInputSchema = z.strictObject({
 })
 export type CommissionPlanInput = z.infer<typeof commissionPlanInputSchema>
 
-/** Name and schedule; the percentage changes through rates, which keep past weeks as they were. */
+/**
+ * Name, schedule and where payouts are recorded as income (an account and an income category, or
+ * null for both to stop). The percentage changes through rates, which keep past weeks as they were.
+ */
 export const commissionPlanUpdateSchema = z
   .strictObject({
     name: planFields.name.optional(),
     periodEndWeekday: planFields.periodEndWeekday.optional(),
     paydayOffsetDays: planFields.paydayOffsetDays.optional(),
+    accountId: z.uuid({ error: 'Elige una cuenta.' }).nullable().optional(),
+    categoryId: z.uuid({ error: 'Elige una categoría.' }).nullable().optional(),
   })
   .refine((update) => Object.keys(update).length > 0, { error: 'No hay nada que guardar.' })
+  .refine(({ accountId, categoryId }) => (accountId === undefined) === (categoryId === undefined), {
+    error: 'Indica la cuenta y la categoría juntas.',
+  })
+  .refine(({ accountId, categoryId }) => (accountId === null) === (categoryId === null), {
+    error: 'Elige una cuenta y una categoría, o ninguna de las dos.',
+    path: ['categoryId'],
+  })
 export type CommissionPlanUpdate = z.infer<typeof commissionPlanUpdateSchema>
 
 /** A new percentage from a payday on; replaces the one starting that same day, if any. */
@@ -141,6 +153,9 @@ export interface CommissionPlan {
   name: string
   periodEndWeekday: number
   paydayOffsetDays: number
+  /** Where a confirmed payout is recorded as income; null for both when it is not. */
+  accountId: string | null
+  categoryId: string | null
   /** Oldest first. */
   rates: CommissionRate[]
 }

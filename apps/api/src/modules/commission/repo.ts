@@ -18,10 +18,13 @@ import {
 import { and, asc, between, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { Db } from '../../db/client'
 import {
+  accounts,
+  categories,
   commissionEntries,
   commissionPayouts,
   commissionPlans,
   commissionRates,
+  transactions,
 } from '../../db/schema'
 import { findOrCreateProfile } from '../profiles/repo'
 
@@ -72,6 +75,8 @@ function toPlan(row: PlanRow, rates: Awaited<ReturnType<typeof ratesOf>>): Commi
     name: row.name,
     periodEndWeekday: row.periodEndWeekday,
     paydayOffsetDays: row.paydayOffsetDays,
+    accountId: row.accountId,
+    categoryId: row.categoryId,
     rates: rates
       .filter(({ planId }) => planId === row.id)
       .map(({ percentBp, effectiveFrom }) => ({ percentBp, effectiveFrom })),
@@ -116,6 +121,36 @@ export async function createPlan(db: Db, userId: string, input: CommissionPlanIn
     .insert(commissionRates)
     .values({ userId, planId: row.id, percentBp, effectiveFrom: todayIn(profile.timezone) })
   return toPlan(row, await ratesOf(db, userId, [row.id]))
+}
+
+/**
+ * Field errors when the account or the income category a plan should record payouts in is not the
+ * user's (or the category is an expense one); null when both are fine.
+ */
+export async function incomeTargetErrors(
+  db: Db,
+  userId: string,
+  accountId: string,
+  categoryId: string,
+) {
+  const [account] = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.userId, userId), eq(accounts.id, accountId)))
+  const [category] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(
+      and(
+        eq(categories.userId, userId),
+        eq(categories.id, categoryId),
+        eq(categories.kind, 'income'),
+      ),
+    )
+  const errors: Record<string, string[]> = {}
+  if (!account) errors.accountId = ['Elige una de tus cuentas.']
+  if (!category) errors.categoryId = ['Elige una de tus categorías de ingreso.']
+  return Object.keys(errors).length > 0 ? errors : null
 }
 
 export async function updatePlan(
@@ -316,12 +351,50 @@ export async function upsertPayout(
     })
     .returning()
   if (!row) throw new Error('payout not saved')
+  await recordIncome(db, userId, plan, row)
   return toPayout(row)
+}
+
+/**
+ * Keeps the income a payout recorded in step with what was paid (plan §7.4): created in the plan's
+ * account when it has one, on the payday (or today, when paid early), updated when the payout is
+ * confirmed again with another amount, and deleted when nothing was paid. Undoing the payout
+ * deletes it through its foreign key. Once created, it stays where it is even if the plan later
+ * points elsewhere.
+ */
+async function recordIncome(db: Db, userId: string, plan: CommissionPlan, payout: PayoutRow) {
+  const linked = and(
+    eq(transactions.userId, userId),
+    eq(transactions.commissionPayoutId, payout.id),
+  )
+  if (payout.paidCents === 0) {
+    await db.delete(transactions).where(linked)
+    return
+  }
+  const updated = await db
+    .update(transactions)
+    .set({ amountCents: payout.paidCents })
+    .where(linked)
+    .returning({ id: transactions.id })
+  if (updated.length > 0 || !plan.accountId || !plan.categoryId) return
+  const today = todayIn((await findOrCreateProfile(db, userId)).timezone)
+  await db.insert(transactions).values({
+    userId,
+    kind: 'income',
+    date: payout.payday < today ? payout.payday : today,
+    amountCents: payout.paidCents,
+    accountId: plan.accountId,
+    categoryId: plan.categoryId,
+    note: plan.name,
+    commissionPayoutId: payout.id,
+  })
 }
 
 /**
  * Marks as paid, with the expected share, the weeks with entries and no payout paid on or before
  * `through`, in one statement. A week confirmed meanwhile by another request is left as it is.
+ * These weeks are not recorded as income: they are the past brought over from the prototype, and
+ * the money is already in the accounts' starting balances.
  */
 export async function confirmPayoutsThrough(
   db: Db,
