@@ -1,3 +1,4 @@
+import type { ModuleId } from '@pf/shared'
 import type { ReactNode } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router'
 import { homePath } from '../lib/modules'
@@ -132,6 +133,13 @@ export function GuestLayout() {
 export function AdminOnly({ children }: { children: ReactNode }) {
   const { me } = useMe()
   if (me.role !== 'admin') return <Navigate to="/" replace />
+  return children
+}
+
+/** Pages of a module the user turned off: home instead (Ajustes turns it back on). */
+export function ModuleOnly({ module, children }: { module: ModuleId; children: ReactNode }) {
+  const { me } = useMe()
+  if (!me.profile.enabledModules.includes(module)) return <Navigate to="/" replace />
   return children
 }
 

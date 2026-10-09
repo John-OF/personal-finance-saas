@@ -6,9 +6,9 @@ import {
   type ProfileUpdate,
   type ThemePreference,
 } from '@pf/shared'
-import { LogOut } from 'lucide-react'
+import { ChevronRight, LogOut } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useMe } from '../../app/me-context'
 import { useSession } from '../../app/session-context'
 import { useTheme } from '../../app/theme-context'
@@ -130,6 +130,30 @@ function ModulesSection() {
         />
         <SaveRow {...status} />
       </form>
+    </Section>
+  )
+}
+
+function FinancesSection() {
+  const links = [
+    { to: '/accounts', label: 'Cuentas', hint: 'Dónde está tu dinero y con cuánto empezó' },
+    { to: '/categories', label: 'Categorías', hint: 'Para tus gastos e ingresos' },
+  ]
+  return (
+    <Section title="Finanzas">
+      <ul className="-my-2 flex flex-col">
+        {links.map(({ to, label, hint }) => (
+          <li key={to} className="border-t border-border first:border-t-0">
+            <Link to={to} className="flex items-center gap-3 py-2.5 hover:text-link">
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{label}</span>
+                <span className="block text-sm text-muted-foreground">{hint}</span>
+              </span>
+              <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Section>
   )
 }
@@ -338,10 +362,12 @@ function AccountSection() {
 }
 
 export function SettingsPage() {
+  const { me } = useMe()
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-2xl">Ajustes</h2>
       <ProfileSection />
+      {me.profile.enabledModules.includes('finances') && <FinancesSection />}
       <ModulesSection />
       <AppearanceSection />
       <PasswordSection />

@@ -1,10 +1,12 @@
 import { Navigate } from 'react-router'
 import { useMe } from '../../app/me-context'
 import { homePath, MODULES } from '../../lib/modules'
+import { SummaryView } from '../finances/SummaryView'
 
 /**
- * Temporary home until the dashboard exists: greets the user and shows their setup. Users of a
- * single module with its own page go straight there.
+ * The summary of the month with the finances module. Without it, a greeting and the user's setup
+ * until the other modules bring their own summaries; users of a single module with its own page go
+ * straight there.
  */
 export function HomePage() {
   const { me } = useMe()
@@ -12,6 +14,7 @@ export function HomePage() {
   const modules = MODULES.filter(({ id }) => profile.enabledModules.includes(id))
   const home = homePath(profile.enabledModules)
   if (home !== '/') return <Navigate to={home} replace />
+  if (profile.enabledModules.includes('finances')) return <SummaryView />
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,5 +1,5 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
-import { AdminOnly, AppLayout, GuestLayout, GuestOnly, SignedIn } from './app/layouts'
+import { AdminOnly, AppLayout, GuestLayout, GuestOnly, ModuleOnly, SignedIn } from './app/layouts'
 import { SessionProvider } from './app/SessionProvider'
 import { AuthCard } from './components/ui/form'
 import { ToastProvider } from './components/ui/toast'
@@ -13,6 +13,9 @@ import { CommissionLayout } from './features/commission/CommissionLayout'
 import { HistoryView } from './features/commission/HistoryView'
 import { PlanSettings } from './features/commission/PlanSettings'
 import { WeekView } from './features/commission/WeekView'
+import { AccountsPage } from './features/finances/AccountsPage'
+import { CategoriesPage } from './features/finances/CategoriesPage'
+import { TransactionsPage } from './features/finances/TransactionsPage'
 import { HomePage } from './features/home/HomePage'
 import { OnboardingPage } from './features/onboarding/OnboardingPage'
 import { SettingsPage } from './features/settings/SettingsPage'
@@ -43,6 +46,30 @@ function AppRoutes() {
               <Route path="history" element={<HistoryView />} />
               <Route path="settings" element={<PlanSettings />} />
             </Route>
+            <Route
+              path="transactions"
+              element={
+                <ModuleOnly module="finances">
+                  <TransactionsPage />
+                </ModuleOnly>
+              }
+            />
+            <Route
+              path="accounts"
+              element={
+                <ModuleOnly module="finances">
+                  <AccountsPage />
+                </ModuleOnly>
+              }
+            />
+            <Route
+              path="categories"
+              element={
+                <ModuleOnly module="finances">
+                  <CategoriesPage />
+                </ModuleOnly>
+              }
+            />
             <Route path="settings" element={<SettingsPage />} />
             <Route
               path="admin"
