@@ -1,11 +1,17 @@
+import { Navigate } from 'react-router'
 import { useMe } from '../../app/me-context'
-import { MODULES } from '../../lib/modules'
+import { homePath, MODULES } from '../../lib/modules'
 
-/** Temporary home until the dashboard exists: greets the user and shows their setup. */
+/**
+ * Temporary home until the dashboard exists: greets the user and shows their setup. Users of a
+ * single module with its own page go straight there.
+ */
 export function HomePage() {
   const { me } = useMe()
   const { profile } = me
   const modules = MODULES.filter(({ id }) => profile.enabledModules.includes(id))
+  const home = homePath(profile.enabledModules)
+  if (home !== '/') return <Navigate to={home} replace />
 
   return (
     <div className="flex flex-col gap-6">

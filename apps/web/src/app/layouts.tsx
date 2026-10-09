@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router'
+import { homePath } from '../lib/modules'
 import { useMe } from './me-context'
 import { MeProvider } from './MeProvider'
 import { NAV_ITEMS } from './nav'
@@ -45,10 +46,14 @@ function OnboardingGate() {
 /** Signed-in pages: header, tabs on wide screens and a bottom bar on phones. */
 export function AppLayout() {
   const { me } = useMe()
+  const { enabledModules } = me.profile
+  // Inicio only leads somewhere else when a single module is the home page.
+  const showHome = homePath(enabledModules) === '/'
   const navItems = NAV_ITEMS.filter(
-    ({ adminOnly, module }) =>
+    ({ to, adminOnly, module }) =>
+      (to !== '/' || showHome) &&
       (!adminOnly || me.role === 'admin') &&
-      (!module || me.profile.enabledModules.includes(module)),
+      (!module || enabledModules.includes(module)),
   )
 
   return (

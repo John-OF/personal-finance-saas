@@ -29,3 +29,15 @@ const MODULE_TEXTS: Record<ModuleId, { label: string; description: string }> = {
 }
 
 export const MODULES = MODULE_IDS.map((id) => ({ id, ...MODULE_TEXTS[id] }))
+
+/** Modules that already have their own page; the rest are still to be built. */
+const MODULE_PAGES: Partial<Record<ModuleId, string>> = { commission: '/commission' }
+
+/**
+ * Where the app opens: someone who only uses one module goes straight to it (plan §3), everyone
+ * else starts at Inicio. (Choosing the start page is phase 9.)
+ */
+export function homePath(enabledModules: readonly ModuleId[]) {
+  const [only] = enabledModules
+  return enabledModules.length === 1 && only ? (MODULE_PAGES[only] ?? '/') : '/'
+}
