@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, daysBetween, isDateKey, todayIn, weekdayOf } from './dates'
+import {
+  addDays,
+  addMonths,
+  daysBetween,
+  isDateKey,
+  isMonthKey,
+  monthOf,
+  monthRange,
+  todayIn,
+  weekdayOf,
+} from './dates'
 
 describe('isDateKey', () => {
   it.each(['2026-10-08', '2024-02-29', '2000-01-01'])('accepts %s', (value) => {
@@ -49,5 +59,29 @@ describe('todayIn', () => {
     const now = new Date('2026-10-09T02:00:00Z')
     expect(todayIn('America/Guayaquil', now)).toBe('2026-10-08')
     expect(todayIn('Europe/Madrid', now)).toBe('2026-10-09')
+  })
+})
+
+describe('months', () => {
+  it.each(['2026-10', '2026-01', '2026-12'])('accepts %s', (value) => {
+    expect(isMonthKey(value)).toBe(true)
+  })
+
+  it.each(['2026-13', '2026-00', '2026-1', '2026-10-01', '', null])('rejects %s', (value) => {
+    expect(isMonthKey(value)).toBe(false)
+  })
+
+  it('moves across years', () => {
+    expect(addMonths('2026-12', 1)).toBe('2027-01')
+    expect(addMonths('2026-01', -1)).toBe('2025-12')
+    expect(addMonths('2026-10', -22)).toBe('2024-12')
+    expect(monthOf('2026-10-08')).toBe('2026-10')
+  })
+
+  it('knows the last day of each month, leap years included', () => {
+    expect(monthRange('2026-10')).toEqual({ from: '2026-10-01', to: '2026-10-31' })
+    expect(monthRange('2026-02')).toEqual({ from: '2026-02-01', to: '2026-02-28' })
+    expect(monthRange('2024-02')).toEqual({ from: '2024-02-01', to: '2024-02-29' })
+    expect(monthRange('2026-12')).toEqual({ from: '2026-12-01', to: '2026-12-31' })
   })
 })
