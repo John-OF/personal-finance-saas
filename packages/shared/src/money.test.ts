@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyPercentBp, formatMoney, parseAmountToCents } from './money'
+import { applyPercentBp, currencySymbol, formatMoney, parseAmountToCents } from './money'
 
 describe('parseAmountToCents', () => {
   it.each([
@@ -50,5 +50,18 @@ describe('applyPercentBp', () => {
 describe('formatMoney', () => {
   it('formats cents as currency for es-EC by default', () => {
     expect(formatMoney(1500050)).toMatch(/15\.000,50/)
+  })
+
+  it('can leave out zero cents, and only zero cents', () => {
+    expect(formatMoney(2500, { trimZeroCents: true })).toMatch(/^\$\s?25$/)
+    expect(formatMoney(2550, { trimZeroCents: true })).toMatch(/25,50$/)
+    expect(formatMoney(-2500, { trimZeroCents: true })).toMatch(/25$/)
+  })
+})
+
+describe('currencySymbol', () => {
+  it('gives the symbol used in the locale', () => {
+    expect(currencySymbol('USD', 'es-EC')).toBe('$')
+    expect(currencySymbol('EUR', 'es-ES')).toBe('€')
   })
 })

@@ -51,11 +51,24 @@ export function applyPercentBp(cents: number, percentBp: number): number {
 export interface MoneyFormatOptions {
   currency?: string
   locale?: string
+  /** `$25` instead of `$25,00` when there are no cents, as the commission prototype shows. */
+  trimZeroCents?: boolean
 }
 
 export function formatMoney(
   cents: number,
-  { currency = 'USD', locale = 'es-EC' }: MoneyFormatOptions = {},
+  { currency = 'USD', locale = 'es-EC', trimZeroCents = false }: MoneyFormatOptions = {},
 ): string {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100)
+  const whole = trimZeroCents && cents % 100 === 0
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    ...(whole && { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+  }).format(cents / 100)
+}
+
+/** The currency's symbol in a locale, such as `$` or `€`, for amount inputs. */
+export function currencySymbol(currency: string, locale: string) {
+  const parts = new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0)
+  return parts.find(({ type }) => type === 'currency')?.value ?? currency
 }
