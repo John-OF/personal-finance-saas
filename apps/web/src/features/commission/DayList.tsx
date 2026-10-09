@@ -1,7 +1,7 @@
 import type { CommissionEntry } from '@pf/shared'
 import { ChevronDown } from 'lucide-react'
 import { useCommission } from './commission-context'
-import { capitalize, dayName, shortDate } from './labels'
+import { capitalize, dayName, shortDate } from '../../lib/labels'
 
 /** The seven days of the week, each one opening to its entries with Editar / Borrar. */
 export function DayList({

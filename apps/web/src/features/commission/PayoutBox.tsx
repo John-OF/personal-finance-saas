@@ -10,7 +10,7 @@ import { useState, type FormEvent } from 'react'
 import { useMe } from '../../app/me-context'
 import { FormAlert } from '../../components/ui/form'
 import { useCommission } from './commission-context'
-import { amountText, dayName, shortDate } from './labels'
+import { amountText, dayName, shortDate } from '../../lib/labels'
 
 /**
  * Confirming the week's payment with what was really paid (it can differ from the calculation),

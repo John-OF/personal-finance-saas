@@ -1,7 +1,7 @@
 import { weekShareCents, yearSummary, type CommissionWeekSummary } from '@pf/shared'
 import { useNavigate } from 'react-router'
 import { useCommission } from './commission-context'
-import { dayName, monthLabel, shortDate } from './labels'
+import { dayName, monthLabel, shortDate } from '../../lib/labels'
 
 function status(week: CommissionWeekSummary, currentPayday: string) {
   if (week.payout) return { label: 'Cobrado', className: 'border-transparent bg-success text-card' }

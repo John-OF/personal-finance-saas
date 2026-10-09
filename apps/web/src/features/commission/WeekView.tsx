@@ -23,7 +23,7 @@ import { useCommission } from './commission-context'
 import { DayList } from './DayList'
 import { EntryForm, type EntryDraft } from './EntryForm'
 import { Envelope } from './Envelope'
-import { amountText, dayLabel } from './labels'
+import { amountText, dayLabel } from '../../lib/labels'
 import { PayoutBox } from './PayoutBox'
 
 const DISMISSED_KEY = 'libreta:commission:dismissed:'

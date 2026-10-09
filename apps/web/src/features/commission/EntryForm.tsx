@@ -2,7 +2,7 @@ import { addDays, daysBetween, isDateKey } from '@pf/shared'
 import type { FormEvent, RefObject } from 'react'
 import { FormAlert } from '../../components/ui/form'
 import { useCommission } from './commission-context'
-import { dayLabel, longDate } from './labels'
+import { dayLabel, longDate } from '../../lib/labels'
 
 export interface EntryDraft {
   /** Set while editing an entry. */

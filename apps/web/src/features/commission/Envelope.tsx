@@ -9,8 +9,8 @@ import {
   dayLabel,
   dayName,
   dayNumber,
-  rangeLabel,
-} from './labels'
+} from '../../lib/labels'
+import { rangeLabel } from './labels'
 
 export interface DayTotal {
   date: string

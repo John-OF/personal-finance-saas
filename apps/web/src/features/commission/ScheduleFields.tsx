@@ -1,4 +1,4 @@
-import { capitalize, weekdayName } from './labels'
+import { capitalize, weekdayName } from '../../lib/labels'
 import type { ScheduleChoice } from './schedule'
 
 const selectClass = 'rounded border border-input bg-card px-3 py-2 text-base'
