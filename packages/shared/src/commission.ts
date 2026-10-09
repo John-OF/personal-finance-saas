@@ -148,6 +148,11 @@ export function summarizeWeeks(
   return [...weeks.values()].sort((a, b) => b.payday.localeCompare(a.payday))
 }
 
+/** Weeks with entries that were never marked as paid, paid on or before `through`. */
+export function unconfirmedWeeks(weeks: readonly CommissionWeekSummary[], through: string) {
+  return weeks.filter((week) => !week.payout && week.grossCents > 0 && week.payday <= through)
+}
+
 /** What the week counts for: what was actually paid, or else what is expected. */
 export function weekShareCents(week: CommissionWeekSummary) {
   return week.payout ? week.payout.paidCents : week.expectedCents

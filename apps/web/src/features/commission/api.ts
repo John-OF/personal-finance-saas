@@ -1,4 +1,5 @@
 import type {
+  CommissionBulkPayoutResponse,
   CommissionEntriesResponse,
   CommissionEntry,
   CommissionEntryInput,
@@ -56,4 +57,9 @@ export const commissionApi = {
     }),
   undoPayout: (planId: string, payday: string) =>
     api<undefined>(`/commission/plans/${planId}/payouts/${payday}`, { method: 'DELETE' }),
+  confirmPayoutsThrough: (planId: string, through: string) =>
+    api<CommissionBulkPayoutResponse>(`/commission/plans/${planId}/payouts/bulk`, {
+      method: 'POST',
+      body: { through },
+    }),
 }

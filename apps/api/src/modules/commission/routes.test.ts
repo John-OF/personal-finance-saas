@@ -1,4 +1,5 @@
 import type {
+  CommissionBulkPayoutResponse,
   CommissionEntriesResponse,
   CommissionEntry,
   CommissionImportResponse,
@@ -236,6 +237,39 @@ describe('weeks and payouts', () => {
     expect((await call('DELETE', `/plans/${plan.id}/payouts/2026-10-10`, USER_A)).status).toBe(404)
   })
 
+  it('marks every unconfirmed week up to a payday as paid with the expected share', async () => {
+    const plan = await newPlan()
+    await addEntry(plan.id, '2026-09-14', 1001) // paid 2026-09-19
+    await addEntry(plan.id, '2026-09-21', 2000) // paid 2026-09-26, already confirmed below
+    await addEntry(plan.id, '2026-09-28', 3000) // paid 2026-10-03
+    await addEntry(plan.id, '2026-10-05', 4000) // paid 2026-10-10, after `through`
+    await json('PUT', `/plans/${plan.id}/payouts/2026-09-26`, USER_A, { paidCents: 900 })
+
+    const result = await json<CommissionBulkPayoutResponse>(
+      'POST',
+      `/plans/${plan.id}/payouts/bulk`,
+      USER_A,
+      { through: '2026-10-03' },
+    )
+    // 10.01 → 5.01 and 30.00 → 15.00.
+    expect(result).toEqual({ confirmed: 2, paidCents: 2001 })
+    const weeks = await weeksOf(plan.id)
+    expect(weeks.map(({ payday, payout }) => [payday, payout?.paidCents ?? null])).toEqual([
+      ['2026-10-10', null],
+      ['2026-10-03', 1500],
+      ['2026-09-26', 900],
+      ['2026-09-19', 501],
+    ])
+
+    const again = await json<CommissionBulkPayoutResponse>(
+      'POST',
+      `/plans/${plan.id}/payouts/bulk`,
+      USER_A,
+      { through: '2026-10-03' },
+    )
+    expect(again).toEqual({ confirmed: 0, paidCents: 0 })
+  })
+
   it('only takes paydays of the plan', async () => {
     const plan = await newPlan()
     for (const payday of ['2026-10-09', '2026-02-30', 'hoy']) {
@@ -342,6 +376,7 @@ describe('isolation between users', () => {
       ['POST', `/entries/${entry.id}/restore`],
       ['PUT', `/plans/${plan.id}/payouts/2026-10-10`, { paidCents: 1 }],
       ['DELETE', `/plans/${plan.id}/payouts/2026-10-10`],
+      ['POST', `/plans/${plan.id}/payouts/bulk`, { through: '2026-12-31' }],
     ]
     for (const [method, path, body] of attempts) {
       const res = await call(method, path, USER_B, body)

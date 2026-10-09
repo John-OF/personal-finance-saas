@@ -6,6 +6,7 @@ import {
   isPayday,
   rateOn,
   summarizeWeeks,
+  unconfirmedWeeks,
   weekDates,
   yearSummary,
   type CommissionPayout,
@@ -160,6 +161,46 @@ describe('summarizeWeeks', () => {
     expect(weeks.map(({ percentBp, expectedCents }) => [percentBp, expectedCents])).toEqual([
       [6000, 600],
       [5000, 500],
+    ])
+  })
+})
+
+describe('unconfirmedWeeks', () => {
+  it('keeps the weeks with entries and no payout, up to a payday', () => {
+    const weeks = summarizeWeeks(
+      [
+        { date: '2026-09-21', amountCents: 1000 },
+        { date: '2026-09-28', amountCents: 1000 },
+        { date: '2026-10-05', amountCents: 1000 },
+      ],
+      [
+        {
+          payday: '2026-10-03',
+          grossCents: 1000,
+          percentBp: 5000,
+          expectedCents: 500,
+          paidCents: 500,
+          paidAt: '2026-10-03T20:00:00.000Z',
+        },
+        // A payout for a week whose entries were deleted afterwards.
+        {
+          payday: '2026-09-19',
+          grossCents: 0,
+          percentBp: 5000,
+          expectedCents: 0,
+          paidCents: 0,
+          paidAt: '2026-09-19T20:00:00.000Z',
+        },
+      ],
+      sundayToSaturday,
+      [{ percentBp: 5000, effectiveFrom: '2026-01-01' }],
+    )
+    expect(unconfirmedWeeks(weeks, '2026-10-03').map(({ payday }) => payday)).toEqual([
+      '2026-09-26',
+    ])
+    expect(unconfirmedWeeks(weeks, '2026-10-10').map(({ payday }) => payday)).toEqual([
+      '2026-10-10',
+      '2026-09-26',
     ])
   })
 })

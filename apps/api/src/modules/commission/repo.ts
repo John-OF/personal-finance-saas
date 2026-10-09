@@ -4,6 +4,7 @@ import {
   rateOn,
   summarizeWeeks,
   todayIn,
+  unconfirmedWeeks,
   type CommissionEntry,
   type CommissionEntryInput,
   type CommissionEntryUpdate,
@@ -316,6 +317,39 @@ export async function upsertPayout(
     .returning()
   if (!row) throw new Error('payout not saved')
   return toPayout(row)
+}
+
+/**
+ * Marks as paid, with the expected share, the weeks with entries and no payout paid on or before
+ * `through`, in one statement. A week confirmed meanwhile by another request is left as it is.
+ */
+export async function confirmPayoutsThrough(
+  db: Db,
+  userId: string,
+  plan: CommissionPlan,
+  through: string,
+) {
+  const weeks = unconfirmedWeeks(await listWeeks(db, userId, plan), through)
+  if (weeks.length === 0) return { confirmed: 0, paidCents: 0 }
+  const rows = await db
+    .insert(commissionPayouts)
+    .values(
+      weeks.map((week) => ({
+        userId,
+        planId: plan.id,
+        payday: week.payday,
+        grossCents: week.grossCents,
+        percentBp: week.percentBp,
+        expectedCents: week.expectedCents,
+        paidCents: week.expectedCents,
+      })),
+    )
+    .onConflictDoNothing({ target: [commissionPayouts.planId, commissionPayouts.payday] })
+    .returning({ paidCents: commissionPayouts.paidCents })
+  return {
+    confirmed: rows.length,
+    paidCents: rows.reduce((sum, { paidCents }) => sum + paidCents, 0),
+  }
 }
 
 export async function deletePayout(db: Db, userId: string, planId: string, payday: string) {

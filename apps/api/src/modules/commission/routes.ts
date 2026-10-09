@@ -1,4 +1,5 @@
 import {
+  commissionBulkPayoutInputSchema,
   commissionEntriesQuerySchema,
   commissionEntryInputSchema,
   commissionEntryUpdateSchema,
@@ -9,6 +10,7 @@ import {
   commissionRateInputSchema,
   isDateKey,
   isPayday,
+  type CommissionBulkPayoutResponse,
   type CommissionEntriesResponse,
   type CommissionImportResponse,
   type CommissionPlansResponse,
@@ -22,6 +24,7 @@ import { validate } from '../../lib/validation'
 import { requireAuth } from '../../middleware/auth'
 import { withUserDb } from '../../middleware/db'
 import {
+  confirmPayoutsThrough,
   createEntry,
   createPlan,
   deleteEntry,
@@ -145,6 +148,22 @@ export const commissionRoutes = new Hono<AppEnv>()
     const entry = entryId ? await restoreEntry(c.var.db, c.var.userId, entryId) : null
     return entry ? c.json(entry) : entryNotFound(c)
   })
+  .post(
+    '/plans/:planId/payouts/bulk',
+    validate('json', commissionBulkPayoutInputSchema),
+    async (c) => {
+      const plan = await planParam(c)
+      if (!plan) return planNotFound(c)
+      const { through } = c.req.valid('json')
+      const body: CommissionBulkPayoutResponse = await confirmPayoutsThrough(
+        c.var.db,
+        c.var.userId,
+        plan,
+        through,
+      )
+      return c.json(body)
+    },
+  )
   .put(
     '/plans/:planId/payouts/:payday',
     validate('json', commissionPayoutInputSchema),

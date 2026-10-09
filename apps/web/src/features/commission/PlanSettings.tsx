@@ -8,6 +8,7 @@ import {
   parseCommissionCsv,
   parsePercentToBp,
   rateOn,
+  unconfirmedWeeks,
   type CommissionCsvRow,
   type CommissionPlan,
 } from '@pf/shared'
@@ -365,6 +366,89 @@ function DataSection() {
   )
 }
 
+/**
+ * Past weeks with entries that were never marked as paid, typically after importing the prototype's
+ * CSV (its payouts are not in the file). Marks them with the expected share in one go; any week can
+ * then be corrected or undone from its own page.
+ */
+function UnconfirmedSection() {
+  const { plan, weeks, currentPayday, reloadWeeks, money } = useCommission()
+  const toast = useToast()
+  const pending = weeks ? unconfirmedWeeks(weeks, addDays(currentPayday, -7)) : []
+  const [through, setThrough] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (pending.length === 0) return null
+  const selected =
+    through && pending.some((week) => week.payday === through) ? through : pending[0]!.payday
+  const chosen = unconfirmedWeeks(pending, selected)
+  const total = chosen.reduce((sum, week) => sum + week.expectedCents, 0)
+
+  async function confirm() {
+    setBusy(true)
+    setError(null)
+    try {
+      const { confirmed, paidCents } = await commissionApi.confirmPayoutsThrough(plan.id, selected)
+      reloadWeeks()
+      toast(
+        `${confirmed === 1 ? 'Se marcó 1 semana como cobrada' : `Se marcaron ${confirmed} semanas como cobradas`}: ${money(paidCents)}`,
+      )
+    } catch (err) {
+      setError(describeFailure(err).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title="Semanas sin confirmar">
+      <p className="text-sm text-muted-foreground">
+        {pending.length === 1
+          ? 'Hay 1 semana pasada con ingresos que no marcaste como cobrada'
+          : `Hay ${pending.length} semanas pasadas con ingresos que no marcaste como cobradas`}{' '}
+        (pasa al importar el CSV del archivo «Mis ingresos», que no guarda los cobros). Puedes
+        marcarlas aquí con lo calculado y luego corregir desde su semana la que te hayan pagado
+        distinto.
+      </p>
+      <label className="flex flex-col gap-1 text-sm">
+        Hasta el pago del
+        <select
+          value={selected}
+          onChange={(e) => setThrough(e.target.value)}
+          className="rounded border border-input bg-card px-3 py-2 text-base"
+        >
+          {pending.map((week) => (
+            <option key={week.payday} value={week.payday}>
+              {dayName(week.payday)} {shortDate(week.payday)} {week.payday.slice(0, 4)} —{' '}
+              {money(week.expectedCents)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="text-sm">
+        {chosen.length === 1
+          ? 'Se marcará 1 semana como cobrada'
+          : `Se marcarán ${chosen.length} semanas como cobradas`}
+        , por <strong>{money(total)}</strong> en total.
+      </p>
+      {error && <FormAlert>{error}</FormAlert>}
+      <button
+        type="button"
+        onClick={() => void confirm()}
+        disabled={busy}
+        className="self-start rounded bg-primary px-4 py-2 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+      >
+        {busy
+          ? 'Marcando…'
+          : chosen.length === 1
+            ? 'Marcar 1 semana como cobrada'
+            : `Marcar ${chosen.length} semanas como cobradas`}
+      </button>
+    </Section>
+  )
+}
+
 function NewPlanSection() {
   const { reloadPlans, selectPlan } = useCommission()
   const navigate = useNavigate()
@@ -417,6 +501,7 @@ export function PlanSettings() {
       <PlanSection />
       <PercentSection />
       <DataSection />
+      <UnconfirmedSection />
       <NewPlanSection />
     </div>
   )

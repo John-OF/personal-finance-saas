@@ -109,6 +109,19 @@ export const commissionPayoutInputSchema = z.strictObject({
 })
 export type CommissionPayoutInput = z.infer<typeof commissionPayoutInputSchema>
 
+/**
+ * Marks as paid, with the expected share, every week with entries and no payout whose payday is on
+ * or before `through`: after importing the prototype's CSV, whose payouts are not in the file.
+ */
+export const commissionBulkPayoutInputSchema = z.strictObject({ through: dateKeySchema })
+export type CommissionBulkPayoutInput = z.infer<typeof commissionBulkPayoutInputSchema>
+
+export interface CommissionBulkPayoutResponse {
+  confirmed: number
+  /** What the weeks marked add up to. */
+  paidCents: number
+}
+
 export const commissionImportInputSchema = z.strictObject({
   rows: z
     .array(
